@@ -1,57 +1,15 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Feb 06 22:13:59 2012
-
-@author: Ge
-"""
-
-
-import numpy as np
-from slab.datamanagement import SlabFile
-from slab.dataanalysis import get_current_filename, get_next_filename
-import matplotlib.pyplot as plt
-
-# from liveplot import LivePlotClient
-
+import h5py
 from os import path
 import textwrap2
 import re
 
 class dataCacheProxy():
-    def __init__(self, expInst=None, newFile=False, stack_prefix='stack_', filepath=None):
-        """ filepath is for reading out files ONLY. To create new data files, please use the expInst
-        interface """
-        if filepath == None and expInst != None:
-            #print 'now load the file from instance'
-            self.exp = expInst
-            self.data_directory = expInst.expt_path
-            #print "self.data_directory", self.data_directory
-            self.prefix = expInst.prefix
-            #print "self.prefix", expInst.prefix
-            self.set_data_file_path(newFile)
-        else:
-            self.path = filepath
-
+    def __init__(self, file_path, stack_prefix='stack_'):
+        """ filepath is for reading out files ONLY. To create new data files, please use the expInst interface """
+        self.file_path = file_path
         self.current_stack = ''
         self.stack_prefix = stack_prefix
-        # self.currentStack = lambda:None;
-        # self.currentStack.note = self.note
-        # self.currentStack.set = self.set
-        # self.currentStack.post = self.post
-
-    def set_data_file_path(self, newFile=False):
-        print 'create new file: ', newFile
-        try:
-            if newFile == True:
-                #print 'creating new file'
-                self.filename = get_next_filename(self.data_directory, self.prefix, suffix='.h5')
-                #print "the new file that's created", self.filename
-            else:
-                #print 'load the current file'
-                self.filename = get_current_filename(self.data_directory, self.prefix, suffix='.h5')
-        except AttributeError:
-            self.filename = self.exp.filename
-        self.path = path.join(self.data_directory, self.filename)
 
     def add(self, keyString, data):
         def add_data(f, group, keyList, data):
@@ -64,11 +22,11 @@ class dataCacheProxy():
                     pass
                 return add_data(f, group[keyList[0]], keyList[1:], data)
 
-        keyList = keyString.split('.')
-        with SlabFile(self.path, 'a') as f:
-            add_data(f, f, keyList, data)
+        key_list = keyString.split('.')
+        with h5py.File(self.file_path, 'a') as f:
+            add_data(f, f, key_list, data)
 
-    def append(self, keyString, data):
+    def append(self, key_string, data):
         def append_data(f, group, keyList, data):
             if len(keyList) == 1:
                 f.append_data(group, keyList[0], data)
@@ -79,8 +37,8 @@ class dataCacheProxy():
                     pass
                 return append_data(f, group[keyList[0]], keyList[1:], data)
 
-        keyList = keyString.split('.')
-        with SlabFile(self.path, 'a') as f:
+        keyList = key_string.split('.')
+        with h5py.File(self.file_path, 'a') as f:
             append_data(f, f, keyList, data)
 
     def set(self, route, data):
@@ -115,7 +73,7 @@ class dataCacheProxy():
                 return get_data(f[keyList[0]], keyList[1:])
 
         keyList = keyString.split('.')
-        with SlabFile(self.path, 'r') as f:
+        with h5py.File(self.file_path, 'r') as f:
             return get_data(f, keyList)
 
     def get(self, route):
@@ -174,7 +132,7 @@ class dataCacheProxy():
         except IndexError, e:
             pass
         keyList = keyString.split('.')
-        with SlabFile(self.path, 'r') as f:
+        with h5py.File(self.file_path, 'r') as f:
             return get_indices(f, keyList)
 
     def index_current_stack(self, keyString=''):
@@ -185,7 +143,7 @@ class dataCacheProxy():
 
     def new_stack(self):
         index = self.get_next_stack_index()
-        with SlabFile(self.path) as f:
+        with h5py.File(self.file_path) as f:
             try:
                 f.create_group(self.current_stack)
                 print "new stack: ", self.current_stack;

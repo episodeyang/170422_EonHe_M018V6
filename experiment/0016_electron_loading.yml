@@ -1,4 +1,7 @@
 prefix: electron_loading
+data_directory: electron_loading
+data_cache:
+  note_line_length: 79
 fridge_params:
   wait_for_temp: 0.080
   min_temp_wait_time: 60

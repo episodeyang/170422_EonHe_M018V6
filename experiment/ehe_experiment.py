@@ -1,46 +1,48 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Feb 06 22:13:59 2012
-
-@author: Ge
-"""
-
 from numpy import *
 from slab import *
 from slab import InstrumentManager
 from slab import dsfit
 import matplotlib.pyplot as plt
-
-from liveplot import LivePlotClient
-
 from slab.instruments import Alazar, AlazarConfig
-
 import util as util
 from data_cache import dataCacheProxy
-
 import os
 import winsound
-
 from scipy.ndimage import filters
 
-
+import yaml
 class eHeExperiment():
-    def attach_instruments(self):
-        self.im = InstrumentManager()
-
-    def __init__(self, expt_path=None, prefix=None, fridgeParams=None, newDataFile=False):
-        if expt_path != None and prefix != None:
-            self.expt_path = expt_path
-            self.prefix = prefix
-
-        self.note_maxLength = 79
+    def __init__(self, config_file_path):
+        # done: load config using yaml
+        with open(config_file_path, 'r') as config_file:
+            # todo: save text of yaml config in datacache
+            # self.config_text = config_file.readlines()
+            self.config = yaml.load(config_file)
 
         # this is the dataCache attached to the experiment.
-        self.dataCache = dataCacheProxy(self, newFile=newDataFile)
-        self.filename = self.dataCache.filename
+        self.dataCache = dataCacheProxy(**self.config['data_cache'])
+        # self.filename = self.dataCache.filename
+        #
+        # self.t0 = time.time()
+        self.reset_timer()
 
+    def reset_timer(self):
         self.t0 = time.time()
 
+    def configure(self, config=None):
+        if not config:
+            config = self.config
+        else:
+            # Note: not sure if overwriting is the right thing to do.
+            self.config = config
+
+    def make_data_dir(self, path):
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+    def attach_instruments(self):
+        self.im = InstrumentManager()
 
     def note(self, string):
         print string
