@@ -30,7 +30,7 @@ class Struct(object):
     def __getattr__(self, key):
         if key == 'keys':
             # NOTE: python 2 patch, because __keys__ is only used in python3
-            return self.__dict__.keys()
+            return self.__dict__.keys
         else:
             value = self.__d[key]
             if type(value) == type({}) and self.__is_recursive:
