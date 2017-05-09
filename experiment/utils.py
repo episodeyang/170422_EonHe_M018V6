@@ -3,6 +3,7 @@ from termcolor import cprint as _cprint
 
 class Struct(object):
     def __init__(self, **d):
+        # type: (object) -> object
         """Features:
         0. Take in a list of keyword arguments in constructor, and assign them as attributes
         1. Correctly handles `dir` command, so shows correct auto-completion in editors.

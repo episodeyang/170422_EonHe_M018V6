@@ -18,17 +18,16 @@ class eHeExperiment():
         # done: load config using yaml
         with open(config_file_path, 'r') as config_file:
             # todo: save text of yaml config in datacache
-            config = utils.Struct(**yaml.load(config_file))
+            self.config = utils.Struct(**yaml.load(config_file))
             config_file.seek(0)
-            config_text = config_file.read()
-        self.config = config
+            self.config_text = config_file.read()
 
         # done: create new folder for experiment
-        data_folder = self.make_data_dir(os.path.join(os.getcwd(), config.data_directory))
-        file_path = os.path.join(data_folder, config.prefix + '.h5')
+        data_folder = self.make_data_dir(os.path.join(os.getcwd(), self.config.data_directory))
+        file_path = os.path.join(data_folder, self.config.prefix + '.h5')
         self.dataCache = dataCacheProxy(file_path,
                                         **vars(self.config.data_cache) if self.config.data_cache else {})
-        self.dataCache.note(config_text, key_string='config_file', max_line_length=-1)
+        self.dataCache.note(self.config_text, key_string='config_file', max_line_length=-1)
         self.reset_timer()
 
     def reset_timer(self):
