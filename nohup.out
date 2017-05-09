@@ -1,0 +1,13 @@
+[W 10:41:27.689 NotebookApp] WARNING: The notebook server is listening on all IP addresses and not using encryption. This is not recommended.
+[I 10:41:27.694 NotebookApp] Serving notebooks from local directory: /mnt/slab/_Data/170422 - EonHe M018V6 with L3 etch
+[I 10:41:27.730 NotebookApp] 0 active kernels 
+[I 10:41:27.731 NotebookApp] The Jupyter Notebook is running at: http://[all ip addresses on your system]:9000/?token=5150c5368267e0cfd9c02546cbba894d76edbfb69e6f281d
+[I 10:41:27.731 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[W 10:41:27.731 NotebookApp] No web browser found: could not locate runnable browser.
+[C 10:41:27.732 NotebookApp] 
+    
+    Copy/paste this URL into your browser when you connect for the first time,
+    to login with a token:
+        http://localhost:9000/?token=5150c5368267e0cfd9c02546cbba894d76edbfb69e6f281d
+[I 10:41:52.825 NotebookApp] 302 GET /?token=5150c5368267e0cfd9c02546cbba894d76edbfb69e6f281d (54.174.114.150) 1.79ms
+[I 10:42:01.331 NotebookApp] 302 GET /?token=5150c5368267e0cfd9c02546cbba894d76edbfb69e6f281d (10.150.136.238) 0.99ms
