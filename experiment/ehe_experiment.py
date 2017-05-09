@@ -5,48 +5,47 @@ from slab import InstrumentManager
 from slab import dsfit
 import matplotlib.pyplot as plt
 from slab.instruments import Alazar, AlazarConfig
-import util as util
+import exp_utils as exp_utils
 from data_cache import dataCacheProxy
 import os
 import winsound
 from scipy.ndimage import filters
-
 import yaml
+import utils
+
 class eHeExperiment():
     def __init__(self, config_file_path):
         # done: load config using yaml
         with open(config_file_path, 'r') as config_file:
             # todo: save text of yaml config in datacache
-            # self.config_text = config_file.readlines()
-            self.config = yaml.load(config_file)
+            config = utils.Struct(**yaml.load(config_file))
+            config_file.seek(0)
+            config_text = config_file.read()
+        self.config = config
 
-        # this is the dataCache attached to the experiment.
-        self.dataCache = dataCacheProxy(**self.config['data_cache'])
-        # self.filename = self.dataCache.filename
-        #
-        # self.t0 = time.time()
+        # done: create new folder for experiment
+        data_folder = self.make_data_dir(os.path.join(os.getcwd(), config.data_directory))
+        file_path = os.path.join(data_folder, config.prefix + '.h5')
+        self.dataCache = dataCacheProxy(file_path,
+                                        **vars(self.config.data_cache) if self.config.data_cache else {})
+        self.dataCache.note(config_text, key_string='config_file', max_line_length=-1)
         self.reset_timer()
 
     def reset_timer(self):
         self.t0 = time.time()
 
-    def configure(self, config=None):
-        if not config:
-            config = self.config
-        else:
-            # Note: not sure if overwriting is the right thing to do.
-            self.config = config
-
     def make_data_dir(self, path):
+        print(path)
         if not os.path.isdir(path):
-            os.mkdir(path)
+            os.makedirs(path)
+        return path
 
     def attach_instruments(self):
         self.im = InstrumentManager()
 
     def note(self, string):
         print string
-        self.dataCache.note(string, maxLength=self.note_maxLength)
+        self.dataCache.note(string, max_line_length=self.config.ledger.note_line_length)
 
     def updateFilament(self, params):
         # self.note('update filament driver')
@@ -117,8 +116,8 @@ class eHeExperiment():
             self.alazar.configure()
 
         self.dataCache.new_stack()
-        self.dataCache.note('alazar_nwa_sweep', keyString='type')
-        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        self.dataCache.note('alazar_nwa_sweep', key_string='type')
+        self.dataCache.note(exp_utils.get_date_time_string(), key_string='startTime')
         high, low = self.get_trap_high_low()
         self.dataCache.set('rampHigh', high)
         self.dataCache.set('rampLow', low)
@@ -139,7 +138,7 @@ class eHeExperiment():
             # ch1_avg = mean(ch1_pts)
             # ch2_avg = mean(ch2_pts)
             mags = sqrt(ch1_pts ** 2 + ch2_pts ** 2)
-            phases = map(util.phase, zip(ch1_pts, ch2_pts))
+            phases = map(exp_utils.phase, zip(ch1_pts, ch2_pts))
 
             self.plotter.append_z('nwa mag', mags)
             self.plotter.append_z('nwa phase', phases)
@@ -166,8 +165,8 @@ class eHeExperiment():
             self.alazar.configure()
 
         self.dataCache.new_stack()
-        self.dataCache.note('heterodyne_spectrum', keyString='type')
-        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        self.dataCache.note('heterodyne_spectrum', key_string='type')
+        self.dataCache.note(exp_utils.get_date_time_string(), key_string='startTime')
         high, low = self.get_trap_high_low()
         self.dataCache.set('rampHigh', high)
         self.dataCache.set('rampLow', low)
@@ -221,8 +220,8 @@ class eHeExperiment():
             self.alazar.configure()
 
         self.dataCache.new_stack()
-        self.dataCache.note('heterodyne_resV_sweep', keyString='type')
-        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        self.dataCache.note('heterodyne_resV_sweep', key_string='type')
+        self.dataCache.note(exp_utils.get_date_time_string(), key_string='startTime')
         if trapTrack == False:
             high, low = self.get_trap_high_low()
             self.dataCache.set('rampHigh', high)
@@ -314,7 +313,7 @@ class eHeExperiment():
         if resStep == None:
             self.resVs = linspace(resStart, resStop, n)
         else:
-            self.resVs = util.ramp(resStart, resStop, resStep)
+            self.resVs = exp_utils.ramp(resStart, resStop, resStep)
 
     def set_ramp_stops(self, high, low, window=None, n=None):
         if window != None:
@@ -335,8 +334,8 @@ class eHeExperiment():
             self.nwa.config.frequency = self.lb.get_frequency()
 
         self.dataCache.new_stack()
-        self.dataCache.note('alazar_single_f_resV_scan', keyString='type')
-        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        self.dataCache.note('alazar_single_f_resV_scan', key_string='type')
+        self.dataCache.note(exp_utils.get_date_time_string(), key_string='startTime')
         self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
         self.dataCache.set('frequency', self.nwa.config.frequency)
 
@@ -368,7 +367,7 @@ class eHeExperiment():
                 tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  # excise=(0,4992))
 
                 mags = sqrt(ch1_pts ** 2 + ch2_pts ** 2)
-                phases = map(util.phase, zip(ch1_pts, ch2_pts))
+                phases = map(exp_utils.phase, zip(ch1_pts, ch2_pts))
 
                 I_half.extend(ch1_pts[:-len(ch1_pts) / 2])
                 Q_half.extend(ch2_pts[:-len(ch2_pts) / 2])
@@ -429,8 +428,8 @@ class eHeExperiment():
             self.na.set_sweep_points(npts)
 
         self.dataCache.new_stack()
-        self.dataCache.note('na_take_one', keyString='type')
-        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        self.dataCache.note('na_take_one', key_string='type')
+        self.dataCache.note(exp_utils.get_date_time_string(), key_string='startTime')
 
         try:
             trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass = self.config.volt_sweep_range
@@ -479,8 +478,8 @@ class eHeExperiment():
             self.na.set_sweep_points(npts)
 
         self.dataCache.new_stack()
-        self.dataCache.note('peak_track_voltage_sweep', keyString='type')
-        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        self.dataCache.note('peak_track_voltage_sweep', key_string='type')
+        self.dataCache.note(exp_utils.get_date_time_string(), key_string='startTime')
 
         self.dataCache.set('resVs', self.resVs)
         self.dataCache.set('trapVs', self.trapVs)
@@ -528,23 +527,23 @@ class eHeExperiment():
             self.pts = (((trapStart, trapEnd, trapStart), trapStep),)
         else:
             self.pts = (((trapStart, trapEnd), trapStep),)
-        self.tvps = util.Vramps(self.pts)
+        self.tvps = exp_utils.Vramps(self.pts)
         self.pts = (((resStart, resEnd), resStep),)
-        self.rvps = util.Vramps(self.pts)  # , 0.25,0.1])#Vramps(pts)
-        self.trapVs = util.flatten(outer(ones(len(self.rvps)), self.tvps))
-        self.resVs = util.flatten(outer(self.rvps, ones(len(self.tvps))))
+        self.rvps = exp_utils.Vramps(self.pts)  # , 0.25,0.1])#Vramps(pts)
+        self.trapVs = exp_utils.flatten(outer(ones(len(self.rvps)), self.tvps))
+        self.resVs = exp_utils.flatten(outer(self.rvps, ones(len(self.tvps))))
 
         if straight:
             # straight flag completely overrides the sweep
             # problem is that two not not necessarily the same length
-            self.resVs = util.Vramps((((resStart, resEnd), resStep),))
-            self.trapVs = util.Vramps((((trapStart, trapEnd), trapStep),))
+            self.resVs = exp_utils.Vramps((((resStart, resEnd), resStep),))
+            self.trapVs = exp_utils.Vramps((((trapStart, trapEnd), trapStep),))
 
         if showPlot:
             plt.plot(self.resVs, self.trapVs)
             plt.xlim(-1.6, 1.6)
             plt.ylim(-0.8, 1.8)
-        print "estimated time is %d days %d hr %d minutes." % util.days_hours_minutes(len(self.trapVs))
+        print "estimated time is %d days %d hr %d minutes." % exp_utils.days_hours_minutes(len(self.trapVs))
 
     def rinse_n_fire(self, threshold=None, intCallback=None, timeout=360, resV=1.5, trapV=1.5, pulses=400, delay=0.01):
         self.note("unbias the trap for a second")

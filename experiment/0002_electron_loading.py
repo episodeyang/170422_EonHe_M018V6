@@ -1,4 +1,3 @@
-
 from ehe_experiment import eHeExperiment
 from time import sleep, time, strftime
 from setup_instruments import nwa, res, guard, trap, fridge, filament

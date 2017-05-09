@@ -27,19 +27,26 @@ class dataCacheProxy():
             add_data(f, f, key_list, data)
 
     def append(self, key_string, data):
-        def append_data(f, group, keyList, data):
+        def append_data(group, keyList, data):
+            if not keyList:
+                return
             if len(keyList) == 1:
-                f.append_data(group, keyList[0], data)
-            else:
                 try:
-                    group.create_group(keyList[0])
-                except ValueError:
-                    pass
-                return append_data(f, group[keyList[0]], keyList[1:], data)
+                    content = list(group[keyList[0]])
+                    del group[keyList[0]]
+                    group[keyList[0]] = content + [data]
+                except KeyError:
+                    group[keyList[0]] = [data]
+                return
+            try:
+                group.create_group(keyList[0])
+            except ValueError:
+                pass
+            return append_data(group[keyList[0]], keyList[1:], data)
 
         keyList = key_string.split('.')
         with h5py.File(self.file_path, 'a') as f:
-            append_data(f, f, keyList, data)
+            append_data(f, keyList, data)
 
     def set(self, route, data):
         """
@@ -151,17 +158,19 @@ class dataCacheProxy():
                 print "{} already exists. Move to next index.".format(self.current_stack)
                 self.new_stack()
 
-    def note(self, string, keyString=None, printOption=False, maxLength=79):
-        if keyString == None:
-            keyString = 'notes'
-        if printOption:
-            print string
-        for line in textwrap2.wrap(string, maxLength):
-            self.post(keyString, line + ' ' * (maxLength - len(line)))
+    def note(self, string, key_string=None, print_option=False, max_line_length=79):
+        if not key_string:
+            key_string = 'notes'
+        if print_option:
+            print key_string, string
+        if max_line_length <= 0:
+            self.post(key_string, string)
+        else:
+            for line in textwrap2.wrap(string, max_line_length):
+                self.post(key_string, line + ' ' * (max_line_length - len(line)))
 
     def set_dict(self, keyString, d):
         """
-
         :param keyString:
         :param d:
         :return:

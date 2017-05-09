@@ -1,7 +1,10 @@
 prefix: electron_loading
-data_directory: electron_loading
-data_cache:
+data_directory: ..\data
+ledger:
   note_line_length: 79
+# this is optional
+data_cache:
+
 fridge_params:
   wait_for_temp: 0.080
   min_temp_wait_time: 60
@@ -13,3 +16,15 @@ filament_params:
 pulse_params:
   delay: .01
   pulses: 150
+sample:
+  freq_no_electron: 6.16562e9
+  freq_with_e: 8023438335.47
+nwa:
+  model: E5071C
+  configuration:
+    measure: S21
+    trigger_source: BUS
+    format: SLOG
+    averages: 1
+    sweep_points: 401
+  load_current_configuration: True
