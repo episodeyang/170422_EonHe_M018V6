@@ -1,10 +1,15 @@
 from ehe_experiment import eHeExperiment
 from time import sleep, time, strftime
-from setup_instruments import fridge, res, heman, nwa, filament
+from setup_instruments import fridge, seekat, heman, nwa, filament
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
+from shutil import copyfile
+
+this_script = r"0013_electron_loading_E5071C.py"
+
+res = seekat
 
 def calibrate_electrical_delay(init_delay):
     """
@@ -25,14 +30,19 @@ def calibrate_electrical_delay(init_delay):
 
     return abs((d2*slope1 - d1*slope2)/(slope1 - slope2))
 
-
 if __name__ == "__main__":
     today = strftime("%y%m%d")
     now = strftime("%H%M%S")
     expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_electron_loading" % now)
     print "Saving data in %s" % expt_path
+    if not os.path.isdir(os.path.split(expt_path)[0]):
+        os.mkdir(os.path.split(expt_path)[0])
     if not os.path.isdir(expt_path):
         os.mkdir(expt_path)
+    sleep(1)
+
+    copyfile(os.path.join(r"S:\_Data\170422 - EonHe M018V6 with L3 etch\experiment", this_script),
+             os.path.join(expt_path, this_script))
 
     prefix = "electron_loading"
     fridgeParams = {'wait_for_temp': 0.080,
@@ -82,7 +92,7 @@ if __name__ == "__main__":
 
     nwa.set_measure('S21')
 
-    load_electrons = False
+    load_electrons = True
     averages = 1
     sweep_points = 1601
 
@@ -103,8 +113,8 @@ if __name__ == "__main__":
 
     dV = 0.020
 
-    Vress = list(np.arange(3.0, 0.0, -dV)) \
-            + list(np.arange(0.0, 3.0, +dV))
+    Vress = list(np.arange(3.0, -3.0, -dV)) \
+            + list(np.arange(-3.0, 3.0, +dV))
 
     fig = plt.figure(figsize=(8.,12.))
     plt.subplot(311)
@@ -153,7 +163,7 @@ if __name__ == "__main__":
 
     # Set voltages for other electrodes:
     res.set_voltage(2, 0.0) # DC bias pinch
-    res.set_voltage(3, 0.0) # Trap guard
+    res.set_voltage(3, 0.0) # Resonator guard
 
     print "Starting resV sweep..."
     for Vres in tqdm(Vress):

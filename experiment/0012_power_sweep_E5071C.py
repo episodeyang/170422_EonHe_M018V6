@@ -36,7 +36,7 @@ def calibrate_electrical_delay(init_delay):
 if __name__ == "__main__":
     today = strftime("%y%m%d")
     now = strftime("%H%M%S")
-    expt_path = os.path.join(r'S:\_Data\160603 - EonHe M016v5\data', today, "%s_power_sweep" % now)
+    expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_power_sweep" % now)
     print "Saving data in %s" % expt_path
     if not os.path.isdir(expt_path):
         os.mkdir(expt_path)
@@ -79,9 +79,9 @@ if __name__ == "__main__":
     nwa.clear_averages()
     nwa.set_timeout(100000)
 
-    averages = 999
+    averages = 5
     sweep_points = 1601
-    powers = np.linspace(-50, -30, 11)
+    powers = np.linspace(-40, 0, 21)
 
     nwa.configure(center=nwa.get_center_frequency(),
                   span=nwa.get_span(),
@@ -90,11 +90,11 @@ if __name__ == "__main__":
                   averages=averages,
                   ifbw=nwa.get_ifbw())
 
-    correct_delay = calibrate_electrical_delay(68E-9)
-    print correct_delay
+    #correct_delay = calibrate_electrical_delay(68E-9)
+    #print correct_delay
     nwa.set_trigger_source('BUS')
-    nwa.set_electrical_delay(correct_delay)
-    nwa.set_format('SLIN')
+    nwa.set_electrical_delay(64E-9)
+    nwa.set_format('SLOG')
     nwa.auto_scale()
     nwa.set_average_state(True)
     nwa.set_trigger_average_mode(True)
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     print "sleep for 5 seconds..."
     sleep(5)
 
-    ehe.dataCache.set('puff', 80)
+    ehe.dataCache.set('puff', 90)
 
     for P in tqdm(powers):
         nwa.set_power(P)
@@ -129,4 +129,6 @@ if __name__ == "__main__":
 
     nwa.set_power(powers[0])
 
-
+    nwa.set_format('MLOG')
+    nwa.auto_scale()
+    nwa.set_trigger_source('INT')

@@ -13,7 +13,7 @@ im = InstrumentManager()
 #trap = YokogawaGS200(address="192.168.14.148")
 
 heman = HeliumManifold(address="http://192.168.14.22")#im['heman']
-res = Seekat.Seekat(address="COM11")
+seekat = Seekat.Seekat(address="COM11")
 #fridge = im['FRIDGE']
 #heman = HeliumManifold(address="http://192.168.14.22")
 filament = FilamentDriver(address="192.168.14.144", recv_length=2**10)
