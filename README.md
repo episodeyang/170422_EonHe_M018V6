@@ -62,6 +62,9 @@ nwa:
 
 ```
 
+The work enviroment would look like this:
+![work_environment_screenshot](figures/work_environment_screenshot.png)
+
 
 Authors:
 - Ge Yang: yangge1987@gmail.com
