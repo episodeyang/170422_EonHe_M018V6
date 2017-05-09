@@ -1,0 +1,12 @@
+prefix: electron_loading
+fridge_params:
+  wait_for_temp: 0.080
+  min_temp_wait_time: 60
+filament_params:
+  amplitude: 4.2
+  offset: -0.5
+  frequency: 113e3
+  duration: 40e-3
+pulse_params:
+  delay: .01
+  pulses: 150
