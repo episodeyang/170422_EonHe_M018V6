@@ -28,6 +28,9 @@ class Struct(object):
     def __str__(self):
         return str(self.__dict__)
 
+    def __getitem__(self, key):
+        return self.__dict__[key]
+
     def __getattr__(self, key):
         if key == 'keys':
             # NOTE: python 2 patch, because __keys__ is only used in python3

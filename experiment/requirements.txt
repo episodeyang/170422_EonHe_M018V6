@@ -1,0 +1,6 @@
+pyyaml
+visdom
+pprint
+termcolor
+ruamel.yaml
+tqdm
