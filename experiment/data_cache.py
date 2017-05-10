@@ -12,19 +12,24 @@ class dataCacheProxy():
         self.stack_prefix = stack_prefix
 
     def add(self, keyString, data):
-        def add_data(f, group, keyList, data):
+        def add_data(group, keyList, data):
             if len(keyList) == 1:
-                f.add_data(group, keyList[0], data)
+                try:
+                    del group[keyList[0]]
+                    group[keyList[0]] = data
+                except KeyError:
+                    group[keyList[0]] = data
+                return
             else:
                 try:
                     group.create_group(keyList[0])
                 except ValueError:
                     pass
-                return add_data(f, group[keyList[0]], keyList[1:], data)
+                return add_data(group[keyList[0]], keyList[1:], data)
 
         key_list = keyString.split('.')
         with h5py.File(self.file_path, 'a') as f:
-            add_data(f, f, key_list, data)
+            add_data(f, key_list, data)
 
     def append(self, key_string, data):
         def append_data(group, keyList, data):
@@ -194,14 +199,12 @@ class dataCacheProxy():
                 d[key] = self.get_dict(keyString + '.' + key)
             return d
 
+import numpy as np
 if __name__ == "__main__":
     print "running a test..."
 
     # Setting up the instance
-    exp = lambda: None;
-    exp.expt_path = './'
-    exp.prefix = 'test'
-    cache = dataCacheProxy(exp)
+    cache = dataCacheProxy('./data_cache_test_file_01.h5')
 
     # test data
     test_data_x = np.arange(0, 10, 0.01)
@@ -236,7 +239,7 @@ if __name__ == "__main__":
             }
         }
     ## new file then find the last stack
-    cache = dataCacheProxy(exp, newFile=True)
+    cache = dataCacheProxy('./data_cache_test_file_02.h5')
     cache.find_last_stack()
     cache.set_dict('dictionary', d)
     print cache.index_current_stack('dictionary')
@@ -244,8 +247,15 @@ if __name__ == "__main__":
     print d, d_copy
     assert d == d_copy, 'set_dict and get_dict round-trip failed'
 
+    cache.new_stack()
+    for i in range(100):
+        cache.append('test_array', [i])
+    cache.new_stack()
+    for i in range(100):
+        cache.append('test_array', [i])
+
     ## create new file and just add to the root
-    cache = dataCacheProxy(exp, newFile=True)
+    cache = dataCacheProxy('./data_cache_test_file_03.h5')
     cache.set_dict('dictionary', d)
     print cache.index_current_stack('dictionary')
     d_copy = cache.get_dict('dictionary')
