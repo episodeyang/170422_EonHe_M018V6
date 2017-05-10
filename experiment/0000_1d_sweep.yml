@@ -1,4 +1,4 @@
-prefix: sweep_with_guard
+prefix: sweep_2d_trap_first_long_experiment
 data_directory: ..\data\{date}\{time}_{prefix}
 colors:
   - "#24636c"
@@ -13,31 +13,71 @@ instruments:
   - fridge
 # all experiment parameters goes here.
 experiment:
-  load_electrons: False
+  load_electrons: True
   loading_Vres: 3.0
   loading_Vtrap: 3.0
   loading_Vguard: 0.0
   sweeps:
+    - sweep_2d_trap_first:
+        new_stack: True
+        Vguard: 0.0 #-0.1
+        Vres_start: 3.0
+        Vres_end: 0.5
+        dVres: 0.05
+        dVtrap: 0.05
+        offset_limit: 1.0
+        reverse: False
+        bi_dir: True
+    - sweep_2d_trap_first:
+        new_stack: True
+        Vguard: 0.0 #-0.1
+        Vres_start: 3.0
+        Vres_end: 0.25
+        dVres: 0.05
+        dVtrap: 0.05
+        offset_limit: 1.0
+        reverse: False
+        bi_dir: True
+    - sweep_2d_trap_first:
+        new_stack: True
+        Vguard: 0.0 #-0.1
+        Vres_start: 3.0
+        Vres_end: 0.05
+        dVres: 0.05
+        dVtrap: 0.025
+        offset_limit: 1.0
+        reverse: False
+        bi_dir: True
+    - sweep_2d_trap_first:
+        new_stack: True
+        Vguard: 0.0 #-0.1
+        Vres_start: 3.0
+        Vres_end: -1.0
+        dVres: 0.05
+        dVtrap: 0.05
+        offset_limit: 1.0
+        reverse: False
+        bi_dir: True
     # TESTED
 #    - voltage_sweep:
 #        Vguard: -0.1
-#        Vres_start: -2.0
-#        Vres_end: 1.0
+#        Vres_start: 3.0
+#        Vres_end: -1.0
 #        dVres: 0.05
-#        offset: 1.0
+#        offset: 0.5
     # TESTED
-    - trap_voltage_sweep:
-        Vres: 0.05
-        Vguard: -0.1
-        Vtrap_start: 2.0
-        Vtrap_end: 0.05
-        dVtrap: 0.05
-    - trap_voltage_sweep:
-        Vres: 0.05
-        Vguard: -0.1
-        Vtrap_start: 0.05
-        Vtrap_end: 2.0
-        dVtrap: 0.05
+#    - trap_voltage_sweep:
+#        Vres: 0.05
+#        Vguard: -0.1
+#        Vtrap_start: 2.0
+#        Vtrap_end: 0.05
+#        dVtrap: 0.05
+#    - trap_voltage_sweep:
+#        Vres: 0.05
+#        Vguard: -0.1
+#        Vtrap_start: 0.05
+#        Vtrap_end: 2.0
+#        dVtrap: 0.05
 
 ledger:
   note_line_length: 79
@@ -66,9 +106,9 @@ nwa:
   # list of configuration to pass into nwa configuration method
   configuration:
     center: 6.4020e9
-    span: 20e6
+    span: 15e6
     # averages: 1
-    sweep_points: 401 #401
+    sweep_points: 1601 #401
   # the rest that gets set one after another. Order is not preserved.
   set:
     format: SLOG

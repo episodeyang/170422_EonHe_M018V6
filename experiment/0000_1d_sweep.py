@@ -34,6 +34,11 @@ for index, sweep in enumerate(sweeps):
     sweep_gen = lambda: sweep_types.__dict__[sweep_type](**sweep_params)
     ####### experiment sweep definitions and preview logic #######
     print("now sweep...")
+    try:
+        if sweep_params.new_stack:
+            ehe.dataCache.new_stack()
+    except:
+        pass
     ehe.sweep(sweep_gen())
 
 if hasattr(ehe.config.nwa, 'set_before_exit'):

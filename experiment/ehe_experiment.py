@@ -165,18 +165,20 @@ class eHeExperiment():
                        )
         return temperature
 
-    def fridge_wait_for_cooldown(self, stable_temp=None, min_temp_wait_time=None):
+    def fridge_wait_for_cooldown(self, wait_for_temp=None, min_temp_wait_time=None):
         print('waiting for fridge to cool down')
         not_settled = True
+        wait_for_temp = wait_for_temp or self.config.fridge.wait_for_temp
+        min_temp_wait_time = min_temp_wait_time if min_temp_wait_time is None else self.config.fridge.min_temp_wait_time
         while not_settled:
             temperature = self.fridge.get_mc_temperature()
-            if temperature <= (stable_temp or self.config.fridge.wait_for_temp) and \
-                            (time.time() - self.t0) > (min_temp_wait_time or self.config.fridge.min_temp_wait_time):
+            if temperature <= wait_for_temp and \
+                            (time.time() - self.t0) > min_temp_wait_time:
                 not_settled = False
                 print('')
             else:
                 time.sleep(5.0)
-                print "temperature is {}, wait to get below {}\r".format(temperature, stable_temp),
+                print "temperature is {}, wait to get below {}\r".format(temperature, wait_for_temp),
 
     def load_electrons(self):
         self.filament.setup_driver(**self.config.filament.config)
