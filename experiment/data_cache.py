@@ -289,25 +289,25 @@ if __name__ == "__main__":
     # DataCache Performance test
     print "starting performance measure"
     t0 = time.time()
-    for i in range(1000):
+    for i in range(200):
         print '.',
         cache.post('mags', np.zeros(1601))
-    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 1000)
+    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 200)
     t0 = time.time()
-    for i in range(1000):
+    for i in range(200):
         print '.',
         cache.post('mags', np.zeros(1601))
-    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 1000)
+    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 200)
     t0 = time.time()
-    for i in range(1000):
+    for i in range(200):
         print '.',
         cache.post('mags', np.zeros(1601))
-    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 1000)
+    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 200)
     t0 = time.time()
-    for i in range(1000):
+    for i in range(200):
         print '.',
         cache.post('mags', np.zeros(1601))
-    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 1000)
+    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 200)
 
     # now data is saved in the dataCache
     # now I want to move some data to a better file
