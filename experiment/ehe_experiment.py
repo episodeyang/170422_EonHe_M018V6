@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+from shutil import copyfile
 import numpy as np
 import matplotlib.pyplot as plt
 import ruamel.yaml as yaml
@@ -11,15 +12,20 @@ import utils
 from data_cache import dataCacheProxy
 from visdom_helper import visdom_helper
 
+from collections import deque
+
 
 class eHeExperiment():
-    def __init__(self, config_file_path, data_directory=None):
+    def __init__(self, config_file_path, data_directory=None, verbose=True):
         # done: load config using yaml
         with open(config_file_path, 'r') as config_file:
             # todo: save text of yaml config in datacache
             self.config = utils.Struct(**yaml.load(config_file))
             config_file.seek(0)
             self.config_text = config_file.read()
+
+        if verbose:
+            print self.config_text
 
         # done: create new folder for experiment
         if not data_directory:
@@ -30,14 +36,17 @@ class eHeExperiment():
                 os.getcwd(),
                 data_directory.format(
                     date=time.strftime("%y%m%d"),
-                    time=time.strftime("%H%M%S")
+                    time=time.strftime("%H%M%S"),
+                    prefix=self.config.prefix
                 )
             )
         )
         file_path = os.path.join(self.config.data_directory_formatted, self.config.prefix + '.h5')
+        copyfile(config_file_path, os.path.join(self.config.data_directory_formatted,
+                                                os.path.split(config_file_path)[-1]))
 
         self.dataCache = dataCacheProxy(file_path, **vars(self.config.data_cache) if self.config.data_cache else {})
-        self.dataCache.note(self.config_text, key_string='config_file', max_line_length=-1)
+        self.dataCache.set('config_test', self.config_text)
 
         # setup visdom dashboard
         self.dash = visdom_helper.Dashboard(self.config.prefix)
@@ -67,7 +76,7 @@ class eHeExperiment():
             #     ehe.dataCache.post('data_shape', (len(Vress), len(Vtraps)))
             self.set_res_voltage(params['Vres'])
             self.set_trap_voltage(params['Vtrap'])
-            time.sleep(0.25)
+            self.set_guard_voltage(params['Vguard'])
             t = self.take_trace_and_save()
 
     def get_sweep_data(self, sweep_generator):
@@ -80,23 +89,26 @@ class eHeExperiment():
                     data[k] = [params[k]]
         return data
 
-    def plot_sweep_params(self, data, blocking=True):
+    def plot_sweep_params(self, data, index=None, title="sweep_parameters", blocking=True):
         fig = plt.figure(figsize=(8., 12.))
         plt.subplot(311)
-        plt.plot(data['Vres'], 'o', color="#23aaff", markeredgecolor="none")
-        plt.plot(data['Vtrap'], 'o', color="#23aaff", markeredgecolor="none")
-        plt.ylabel("Resonator voltage (V)")
+        title = ("{:04d}_".format(index) if index != None else "") + title
+        plt.title(title)
 
+        for i, key in enumerate([k for k in data.keys() if k is not 'k']):
+            plt.plot(data[key], 'o-', color=self.config.colors[i % 5], linewidth=3, markeredgecolor="none", label=key)
+        plt.ylabel("Bias Voltage (V)")
+        plt.legend(frameon=False)
         fpts, mags, phases = self.nwa.take_one()
 
         plt.subplot(312)
-        plt.plot(fpts, mags)
+        plt.plot(fpts, mags, linewidth=2, color=self.config.colors[0])
         plt.xlabel('Frequency (Hz)')
         plt.ylabel('Magnitude (W)')
         plt.xlim(np.min(fpts), np.max(fpts))
 
         plt.subplot(313)
-        plt.plot(fpts, phases)
+        plt.plot(fpts, phases, linewidth=2, color=self.config.colors[1])
         plt.xlabel('Frequency (Hz)')
         plt.ylabel('Phase (deg)')
         plt.xlim(np.min(fpts), np.max(fpts))
@@ -104,11 +116,12 @@ class eHeExperiment():
         if blocking:
             plt.show()
 
-        fig.savefig(os.path.join(self.config.data_directory_formatted, "pre_electron_loading.png"), dpi=200)
+        title += ".png"
+        fig.savefig(os.path.join(self.config.data_directory_formatted, title), dpi=200)
 
-    def save_sweep_preview(self, sweep_generator, blocking=True):
+    def save_sweep_preview(self, sweep_generator, index=None, title="sweep_preview", blocking=True):
         data = self.get_sweep_data(sweep_generator)
-        self.plot_sweep_params(data, blocking=True)
+        self.plot_sweep_params(data, index, title, blocking)
 
     # list of shim methods to make high-level code more shielded from low-level changes.
     def get_res_voltage(self):
@@ -123,15 +136,19 @@ class eHeExperiment():
     def set_trap_voltage(self, volt):
         self.seekat.set_voltage(self.config.seekat.trap_channel, volt)
 
+    def get_guard_voltage(self):
+        return self.seekat.get_voltage(self.config.seekat.guard_channel)
+
+    def set_guard_voltage(self, volt):
+        self.seekat.set_voltage(self.config.seekat.guard_channel, volt)
+
     def take_trace_and_save(self):
         temperature = self.fridge.get_mc_temperature()
         self.dataCache.post('temperature', temperature)
 
-        Vres = self.get_res_voltage()
-        Vtrap = self.get_res_voltage()
-
-        self.dataCache.post('Vres', Vres)
-        self.dataCache.post('Vtrap', Vtrap)
+        self.dataCache.post('Vres', self.get_res_voltage())
+        self.dataCache.post('Vtrap', self.get_trap_voltage())
+        self.dataCache.post('Vguard', self.get_guard_voltage())
 
         fpts, mags, phases = self.nwa.take_one()
         self.dataCache.post('fpts', fpts)
@@ -139,8 +156,53 @@ class eHeExperiment():
         self.dataCache.post('phases', phases)
         self.dataCache.post('time', time.time() - self.t0)
 
+        # Live plots
         self.dash.plot('nwa-monitor', 'line', X=fpts, Y=mags)
+        ## heatmap of the spectrum
+        # todo: this part seems to be very non-performant. Limit length to -100:
+
+        try:
+            # down-sample the magnitudes
+            self._magss.append(mags[::self.config.monitoring.spectrum_down_sample])
+        except:
+            self._magss = deque()
+            self._magss.append(mags[::self.config.monitoring.spectrum_down_sample])
+        while len(self._magss) > self.config.monitoring.spectrum_window_length:
+            self._magss.popleft()
+        self.dash.plot('spectrum-monitor', 'heatmap', X=np.array(self._magss).T)
+
+        # this might be the slow part. shouldn't really though. could be cached.
+        vress, vtraps, vguards = self.dataCache.get('Vres'), self.dataCache.get('Vtrap'), self.dataCache.get('Vguard')
+        self.dash.plot('bias-electrodes', 'line',
+                       X=np.arange(len(vress)),
+                       Y=np.column_stack((vress, vtraps, vguards))
+                       )
         return temperature
+
+    def fridge_wait_for_cooldown(self, wait_for_temp=None, min_temp_wait_time=None):
+        print('waiting for fridge to cool down')
+        not_settled = True
+        wait_for_temp = wait_for_temp or self.config.fridge.wait_for_temp
+        min_temp_wait_time = min_temp_wait_time if min_temp_wait_time is None else self.config.fridge.min_temp_wait_time
+        while not_settled:
+            temperature = self.fridge.get_mc_temperature()
+            if temperature <= wait_for_temp and \
+                            (time.time() - self.t0) > min_temp_wait_time:
+                not_settled = False
+                print('')
+            else:
+                time.sleep(5.0)
+                print "temperature is {}, wait to get below {}\r".format(temperature, wait_for_temp),
+
+    def load_electrons(self):
+        self.filament.setup_driver(**self.config.filament.config)
+
+        print("firing filament...")
+        self.set_res_voltage(self.config.experiment.loading_Vres)
+        self.set_trap_voltage(self.config.experiment.loading_Vtrap)
+        self.set_guard_voltage(self.config.experiment.loading_Vguard)
+        self.filament.fire_filament(**self.config.filament.firing)
+        self.fridge_wait_for_cooldown()
 
         # def updateFilament(self, params):
         #     # self.note('update filament driver')

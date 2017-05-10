@@ -184,7 +184,7 @@ if __name__ == "__main__":
     #seekat.set_voltage(5, 0.0) # Resonator guard
 
     print "Starting resV sweep..."
-    for k,Vres in tqdm(enumerate(Vress)):
+    for k, Vres in tqdm(enumerate(Vress)):
         set_res(Vres)
         Vtraps = list(np.arange(Vres-0.25, Vres+0.25, dVtrap)) + \
             list(np.arange(Vres+0.25, Vres-0.25-dVtrap, -dVtrap))
