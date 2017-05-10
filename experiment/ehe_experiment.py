@@ -12,6 +12,8 @@ import utils
 from data_cache import dataCacheProxy
 from visdom_helper import visdom_helper
 
+from collections import deque
+
 
 class eHeExperiment():
     def __init__(self, config_file_path, data_directory=None, verbose=True):
@@ -157,7 +159,23 @@ class eHeExperiment():
         # Live plots
         self.dash.plot('nwa-monitor', 'line', X=fpts, Y=mags)
         ## heatmap of the spectrum
-        self.dash.plot('spectrum-monitor', 'heatmap', X=self.dataCache.get('mags').T)
+        # todo: this part seems to be very non-performant. Limit length to -100:
+
+        try:
+            self._plot_index += 1
+        except:
+            self._plot_index = 1
+        if self._plot_index % 10 == 0:
+            try:
+                # note: down sample the mags.
+                self._magss.append(mags[::4])
+            except:
+                self._magss = deque()
+                self._magss.append(mags[::4])
+            while len(self._magss) > 80:
+                self._magss.pop()
+            self.dash.plot('spectrum-monitor', 'heatmap', X=np.array(self._magss).T)
+
         vress, vtraps, vguards = self.dataCache.get('Vres'), self.dataCache.get('Vtrap'), self.dataCache.get('Vguard')
         self.dash.plot('bias-electrodes', 'line',
                        X=np.arange(len(vress)),
