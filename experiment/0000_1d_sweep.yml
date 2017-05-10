@@ -18,35 +18,28 @@ experiment:
   loading_Vtrap: 3.0
   loading_Vguard: 0.0
   sweeps:
-#    - sweep_2d_trap_first:
-#        new_stack: True
-#        Vguard: 0.0 #-0.1
-#        Vres_start: 3.0
-#        Vres_end: 0.5
-#        dVres: 0.05
-#        dVtrap: 0.05
-#        offset_limit: 1.0
-#        reverse: False
-#        bi_dir: True
-    # TESTED
-#    - voltage_sweep:
+    - sweep_2d_trap_first:
+        new_stack: True
+        Vguard: 0.0 #-0.1
+        Vres_start: 2.0
+        Vres_end: 0.05
+        dVres: 0.05
+        dVtrap: 0.05
+        offset_limit: 1.0
+        reverse: False
+        bi_dir: False
+
+#    - voltage_sweep: # sweeps both resonator and trap electrode simultaneously.
 #        Vguard: -0.1
 #        Vres_start: 3.0
 #        Vres_end: -1.0
 #        dVres: 0.05
 #        offset: 0.5
-    # TESTED
-    - trap_voltage_sweep:
-        Vres: 0.05
-        Vguard: -0.1
-        Vtrap_start: 2.0
-        Vtrap_end: 0.05
-        dVtrap: 0.05
-#    - trap_voltage_sweep:
+#    - trap_voltage_sweep: # sweeps the trap at a fixed resonator voltage.
 #        Vres: 0.05
 #        Vguard: -0.1
-#        Vtrap_start: 0.05
-#        Vtrap_end: 2.0
+#        Vtrap_start: 2.0
+#        Vtrap_end: 0.05
 #        dVtrap: 0.05
 
 ledger:
@@ -95,3 +88,6 @@ seekat:
   res_channel: 1
   trap_channel: 2
   guard_channel: 3
+monitoring:
+  spectrum_down_sample: 4
+  spectrum_window_length: 10

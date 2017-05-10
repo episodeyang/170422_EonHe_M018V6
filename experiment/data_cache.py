@@ -40,17 +40,18 @@ class dataCacheProxy():
             data = np.array(data)
             if len(keyList) == 1:
                 try:
-                    # todo: use reshape to make go faster
+                    # done: use reshape to make go faster
                     data_set = group[keyList[0]]
                     shape = list(data_set.shape)
                     shape[0] += 1
                     data_set.resize(shape)  # need to be chuncked dataset
-                    data_set[-1, :] = data
+                    data_set[-1] = data
                 except KeyError:
                     shape = list(data.shape)
-                    group.create_dataset(keyList[0], [1] + shape, maxshape=([None] + shape), chunks=True)
+                    # note: dtype is important for string types 'S4' for 'blah' for example.
+                    group.create_dataset(keyList[0], [1] + shape, maxshape=([None] + shape), chunks=True, dtype=data.dtype)
                     data_set = group[keyList[0]]
-                    data_set[-1, :] = data
+                    data_set[-1] = data
                 return
             try:
                 group.create_group(keyList[0])
@@ -224,9 +225,14 @@ if __name__ == "__main__":
     test_data_x = np.arange(0, 10, 0.01)
     test_data_y = np.sin(test_data_x)
 
+    cache.note("data_cache is awesome!", max_line_length=79)
+    cache.note("the append option is O(k)!", max_line_length=79)
+
     # example usage
     cache.append('key1', (test_data_x, test_data_y))
     # plt.plot(cache.get('key1')[0][1])
+    cache.append('key1', (test_data_x, test_data_y))
+
     cache.add('key2', (test_data_x, test_data_y))
     # plt.plot(cache.get('key2')[1])
     # plt.show()

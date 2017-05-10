@@ -46,7 +46,7 @@ class eHeExperiment():
                                                 os.path.split(config_file_path)[-1]))
 
         self.dataCache = dataCacheProxy(file_path, **vars(self.config.data_cache) if self.config.data_cache else {})
-        self.dataCache.note(self.config_text, key_string='config_file', max_line_length=-1)
+        self.dataCache.set('config_test', self.config_text)
 
         # setup visdom dashboard
         self.dash = visdom_helper.Dashboard(self.config.prefix)
@@ -162,20 +162,16 @@ class eHeExperiment():
         # todo: this part seems to be very non-performant. Limit length to -100:
 
         try:
-            self._plot_index += 1
+            # down-sample the magnitudes
+            self._magss.append(mags[::self.config.monitoring.spectrum_down_sample])
         except:
-            self._plot_index = 1
-        if self._plot_index % 10 == 0:
-            try:
-                # note: down sample the mags.
-                self._magss.append(mags[::4])
-            except:
-                self._magss = deque()
-                self._magss.append(mags[::4])
-            while len(self._magss) > 80:
-                self._magss.pop()
-            self.dash.plot('spectrum-monitor', 'heatmap', X=np.array(self._magss).T)
+            self._magss = deque()
+            self._magss.append(mags[::self.config.monitoring.spectrum_down_sample])
+        while len(self._magss) > self.config.monitoring.spectrum_window_length:
+            self._magss.popleft()
+        self.dash.plot('spectrum-monitor', 'heatmap', X=np.array(self._magss).T)
 
+        # this might be the slow part. shouldn't really though. could be cached.
         vress, vtraps, vguards = self.dataCache.get('Vres'), self.dataCache.get('Vtrap'), self.dataCache.get('Vguard')
         self.dash.plot('bias-electrodes', 'line',
                        X=np.arange(len(vress)),
