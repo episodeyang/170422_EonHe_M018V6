@@ -4,6 +4,7 @@ from os import path
 import textwrap2
 import re
 
+
 class dataCacheProxy():
     def __init__(self, file_path, stack_prefix='stack_'):
         """ filepath is for reading out files ONLY. To create new data files, please use the expInst interface """
@@ -12,6 +13,7 @@ class dataCacheProxy():
         self.stack_prefix = stack_prefix
 
     def add(self, keyString, data):
+        """method does not use chunked list, nor resizable."""
         def add_data(group, keyList, data):
             if len(keyList) == 1:
                 try:
@@ -35,13 +37,20 @@ class dataCacheProxy():
         def append_data(group, keyList, data):
             if not keyList:
                 return
+            data = np.array(data)
             if len(keyList) == 1:
                 try:
-                    content = list(group[keyList[0]])
-                    del group[keyList[0]]
-                    group[keyList[0]] = content + [data]
+                    # todo: use reshape to make go faster
+                    data_set = group[keyList[0]]
+                    shape = list(data_set.shape)
+                    shape[0] += 1
+                    data_set.resize(shape)  # need to be chuncked dataset
+                    data_set[-1, :] = data
                 except KeyError:
-                    group[keyList[0]] = [data]
+                    shape = list(data.shape)
+                    group.create_dataset(keyList[0], [1] + shape, maxshape=([None] + shape), chunks=True)
+                    data_set = group[keyList[0]]
+                    data_set[-1, :] = data
                 return
             try:
                 group.create_group(keyList[0])
@@ -103,8 +112,10 @@ class dataCacheProxy():
     def get_next_stack_index(self):
         """ this also mutates the current_stack pointer, to point to the enxt stack
         """
-        try: index = int(self.current_stack[-5:]) + 1
-        except: index = 0
+        try:
+            index = int(self.current_stack[-5:]) + 1
+        except:
+            index = 0
         self.current_stack = self.stack_prefix + str(100000 + index)[1:]
         return index
 
@@ -199,7 +210,10 @@ class dataCacheProxy():
                 d[key] = self.get_dict(keyString + '.' + key)
             return d
 
+
 import numpy as np
+import time
+
 if __name__ == "__main__":
     print "running a test..."
 
@@ -211,33 +225,33 @@ if __name__ == "__main__":
     test_data_y = np.sin(test_data_x)
 
     # example usage
-    cache.append('key1', (test_data_x, test_data_y) )
-    #plt.plot(cache.get('key1')[0][1])
-    cache.add('key2', (test_data_x, test_data_y) )
-    #plt.plot(cache.get('key2')[1])
+    cache.append('key1', (test_data_x, test_data_y))
+    # plt.plot(cache.get('key1')[0][1])
+    cache.add('key2', (test_data_x, test_data_y))
+    # plt.plot(cache.get('key2')[1])
     # plt.show()
 
-    cache.add('group1.key1', (test_data_x, test_data_y) )
-    #plt.plot(cache.get('group1.key1')[1])
-    cache.append('group1.key2', (test_data_x, test_data_y) )
-    #plt.plot(cache.get('group1.key2')[0][1])
+    cache.add('group1.key1', (test_data_x, test_data_y))
+    # plt.plot(cache.get('group1.key1')[1])
+    cache.append('group1.key2', (test_data_x, test_data_y))
+    # plt.plot(cache.get('group1.key2')[0][1])
     # plt.show()
 
-    cache.add('group1.subgroup.key2', (test_data_x, test_data_y) )
-    #plt.plot(cache.get('group1.subgroup.key2')[1])
-    cache.append('group1.subgroup.key3', (test_data_x, test_data_y) )
-    #plt.plot(cache.get('group1.subgroup.key3')[0][1])
-    #plt.show()
+    cache.add('group1.subgroup.key2', (test_data_x, test_data_y))
+    # plt.plot(cache.get('group1.subgroup.key2')[1])
+    cache.append('group1.subgroup.key3', (test_data_x, test_data_y))
+    # plt.plot(cache.get('group1.subgroup.key3')[0][1])
+    # plt.show()
 
     ### now test the set_dict method
     d = {
-            'key0': 'haha',
-            'key1': 'haha',
-            'd0': {
-                'key2': 'some stuff is here',
-                'key3': 'some more stuff is here'
-            }
+        'key0': 'haha',
+        'key1': 'haha',
+        'd0': {
+            'key2': 'some stuff is here',
+            'key3': 'some more stuff is here'
         }
+    }
     ## new file then find the last stack
     cache = dataCacheProxy('./data_cache_test_file_02.h5')
     cache.find_last_stack()
@@ -265,9 +279,39 @@ if __name__ == "__main__":
     cache.find_last_stack()
     print 'the latest stack is: ', cache.current_stack
 
-    #now data is saved in the dataCache
-    #now I want to move some data to a better file
-    #each experiment is a file, contains:
+    # DataCache stack_index test
+    cache = dataCacheProxy('./data_cache_test_file_04.h5')
+    cache.new_stack()
+    cache.post('mags', np.zeros(1601))
+    cache.new_stack()
+    cache.post('mags', np.zeros(1601))
+
+    # DataCache Performance test
+    print "starting performance measure"
+    t0 = time.time()
+    for i in range(1000):
+        print '.',
+        cache.post('mags', np.zeros(1601))
+    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 1000)
+    t0 = time.time()
+    for i in range(1000):
+        print '.',
+        cache.post('mags', np.zeros(1601))
+    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 1000)
+    t0 = time.time()
+    for i in range(1000):
+        print '.',
+        cache.post('mags', np.zeros(1601))
+    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 1000)
+    t0 = time.time()
+    for i in range(1000):
+        print '.',
+        cache.post('mags', np.zeros(1601))
+    print "\ntime spent per iteration: {}s".format((time.time() - t0) / 1000)
+
+    # now data is saved in the dataCache
+    # now I want to move some data to a better file
+    # each experiment is a file, contains:
     # - notes
     # - stack_<numeric>
     #   - configs
