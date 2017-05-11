@@ -215,21 +215,18 @@ class eHeExperiment():
         self.dash.append('resonance frequency', 'line', X=np.array(vress.shape[:1]), Y=np.array([self.peak_tracker.f0]), opts=dict(legend=['f0s']))
         return temperature
 
-    def fridge_wait_for_cooldown(self, wait_for_temp=None, min_temp_wait_time=None):
+    def fridge_wait_for_cooldown(self, wait_for_temp=None):
         not_settled = True
         wait_for_temp = wait_for_temp or self.config.fridge.wait_for_temp
-        # allow min_temp_wait_time == 0 for zero wait time.
-        min_temp_wait_time = min_temp_wait_time if min_temp_wait_time is not None else self.config.fridge.min_temp_wait_time
-        print('waiting for fridge to cool down. Minimum wait time is {}s'.format(min_temp_wait_time))
+        print 'waiting for fridge to cool down...'
         while not_settled:
             temperature = self.fridge.get_mc_temperature()
-            if temperature <= wait_for_temp and \
-                            (time.time() - self.t0) > min_temp_wait_time:
+            if temperature <= wait_for_temp:
                 not_settled = False
                 print('')
             else:
-                time.sleep(5.0)
                 print "temperature is {}, wait to get below {}\r".format(temperature, wait_for_temp),
+                time.sleep(5.0)
 
     def load_electrons(self):
         self.filament.setup_driver(**self.config.filament.config)
@@ -239,7 +236,11 @@ class eHeExperiment():
         self.set_trap_voltage(self.config.experiment.loading_Vtrap)
         self.set_guard_voltage(self.config.experiment.loading_Vguard)
         self.set_pinch_voltage(self.config.experiment.loading_Vpinch)
+        time.sleep(1.0)
         self.filament.fire_filament(**self.config.filament.firing)
+
+        print 'minimum wait time: {}s'.format(self.config.fridge.min_temp_wait_time)
+        time.sleep(self.config.fridge.min_temp_wait_time)
         self.fridge_wait_for_cooldown()
 
         # def updateFilament(self, params):

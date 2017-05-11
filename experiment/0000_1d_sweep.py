@@ -17,7 +17,7 @@ for index, sweep in enumerate(sweeps):
     sweep_type, = sweep.keys()
     sweep_params = sweep[sweep_type]
     sweep_gen = lambda: sweep_types.__dict__[sweep_type](**sweep_params)
-    ehe.save_sweep_preview(sweep_gen(), index, title=sweep_type, blocking=True or (index is 0))
+    ehe.save_sweep_preview(sweep_gen(), index, title=sweep_type, blocking=ehe.config.experiment.preview_sweeps)
 
 ######## Experiment #########
 ehe.note('Starting Experiment...')
