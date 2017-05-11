@@ -18,9 +18,9 @@ class dataCacheProxy():
             if len(keyList) == 1:
                 try:
                     del group[keyList[0]]
-                    group[keyList[0]] = data
+                    group[keyList[0]] = np.array(data)
                 except KeyError:
-                    group[keyList[0]] = data
+                    group[keyList[0]] = np.array(data)
                 return
             else:
                 try:

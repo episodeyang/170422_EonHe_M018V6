@@ -7,12 +7,12 @@ import matplotlib.pyplot as plt
 import ruamel.yaml as yaml
 import time
 from tqdm import tqdm
+from collections import deque
 
 import utils
+from peak_tracker import PeakTracker
 from data_cache import dataCacheProxy
 from visdom_helper import visdom_helper
-
-from collections import deque
 
 
 class eHeExperiment():
@@ -46,11 +46,17 @@ class eHeExperiment():
                                                 os.path.split(config_file_path)[-1]))
 
         self.dataCache = dataCacheProxy(file_path, **vars(self.config.data_cache) if self.config.data_cache else {})
-        self.dataCache.set('config_test', self.config_text)
+        self.dataCache.append('config_text', self.config_text)
 
         # setup visdom dashboard
-        self.dash = visdom_helper.Dashboard(self.config.prefix)
+        try:
+            env = self.config.dashboard
+            env = env.format(prefix=self.config.prefix)
+        except:
+            env = self.config.prefix
+        self.dash = visdom_helper.Dashboard(env)
 
+        self.peak_tracker = PeakTracker()
         self.reset_timer()
 
     def reset_timer(self):
@@ -77,6 +83,7 @@ class eHeExperiment():
             self.set_res_voltage(params['Vres'])
             self.set_trap_voltage(params['Vtrap'])
             self.set_guard_voltage(params['Vguard'])
+            self.set_pinch_voltage(params['Vpinch'])
             t = self.take_trace_and_save()
 
     def get_sweep_data(self, sweep_generator):
@@ -121,6 +128,8 @@ class eHeExperiment():
 
     def save_sweep_preview(self, sweep_generator, index=None, title="sweep_preview", blocking=True):
         data = self.get_sweep_data(sweep_generator)
+        for key in self.config.nwa.set_before_sweep_preview.keys():
+            self.nwa.__getattribute__('set_' + key)(self.config.nwa.set_before_sweep_preview.__dict__[key])
         self.plot_sweep_params(data, index, title, blocking)
 
     # list of shim methods to make high-level code more shielded from low-level changes.
@@ -142,6 +151,20 @@ class eHeExperiment():
     def set_guard_voltage(self, volt):
         self.seekat.set_voltage(self.config.seekat.guard_channel, volt)
 
+    def get_pinch_voltage(self):
+        return self.seekat.get_voltage(self.config.seekat.pinch_channel)
+
+    def set_pinch_voltage(self, volt):
+        self.seekat.set_voltage(self.config.seekat.pinch_channel, volt)
+
+    def new_stack(self):
+        self.reset_magss()
+        self.dataCache.new_stack()
+        self.dash.clear()
+
+    def reset_magss(self):
+        self._magss = deque()
+
     def take_trace_and_save(self):
         temperature = self.fridge.get_mc_temperature()
         self.dataCache.post('temperature', temperature)
@@ -149,12 +172,15 @@ class eHeExperiment():
         self.dataCache.post('Vres', self.get_res_voltage())
         self.dataCache.post('Vtrap', self.get_trap_voltage())
         self.dataCache.post('Vguard', self.get_guard_voltage())
+        self.dataCache.post('Vpinch', self.get_pinch_voltage())
 
         fpts, mags, phases = self.nwa.take_one()
         self.dataCache.post('fpts', fpts)
         self.dataCache.post('mags', mags)
         self.dataCache.post('phases', phases)
         self.dataCache.post('time', time.time() - self.t0)
+
+        self.peak_tracker.fit(fpts, mags)
 
         # Live plots
         self.dash.plot('nwa-monitor', 'line', X=fpts, Y=mags)
@@ -165,25 +191,36 @@ class eHeExperiment():
             # down-sample the magnitudes
             self._magss.append(mags[::self.config.monitoring.spectrum_down_sample])
         except:
-            self._magss = deque()
+            self.reset_magss()
             self._magss.append(mags[::self.config.monitoring.spectrum_down_sample])
-        while len(self._magss) > self.config.monitoring.spectrum_window_length:
+        while len(
+                self._magss) > self.config.monitoring.spectrum_window_length * self.config.monitoring.spectrum_time_domain_down_sample:
             self._magss.popleft()
-        self.dash.plot('spectrum-monitor', 'heatmap', X=np.array(self._magss).T)
+        small_mags = [mags for i, mags in enumerate(self._magss) if
+                      i % self.config.monitoring.spectrum_time_domain_down_sample == 0]
+
+        self.dash.plot('spectrum-monitor', 'heatmap', X=np.array(small_mags).T)
 
         # this might be the slow part. shouldn't really though. could be cached.
-        vress, vtraps, vguards = self.dataCache.get('Vres'), self.dataCache.get('Vtrap'), self.dataCache.get('Vguard')
+        vress, vtraps, vguards, vpinches, = self.dataCache.get('Vres'), self.dataCache.get('Vtrap'), self.dataCache.get(
+            'Vguard'), self.dataCache.get('Vpinch')
         self.dash.plot('bias-electrodes', 'line',
                        X=np.arange(len(vress)),
-                       Y=np.column_stack((vress, vtraps, vguards))
+                       Y=np.column_stack((vress, vtraps, vguards, vpinches)),
+                       opts=dict(
+                           legend=['Vres', 'Vtrap', 'Vguard', 'Vpinch'],
                        )
+                       )
+
+        self.dash.append('resonance frequency', 'line', X=np.array(vress.shape[:1]), Y=np.array([self.peak_tracker.f0]), opts=dict(legend=['f0s']))
         return temperature
 
     def fridge_wait_for_cooldown(self, wait_for_temp=None, min_temp_wait_time=None):
-        print('waiting for fridge to cool down')
         not_settled = True
         wait_for_temp = wait_for_temp or self.config.fridge.wait_for_temp
-        min_temp_wait_time = min_temp_wait_time if min_temp_wait_time is None else self.config.fridge.min_temp_wait_time
+        # allow min_temp_wait_time == 0 for zero wait time.
+        min_temp_wait_time = min_temp_wait_time if min_temp_wait_time is not None else self.config.fridge.min_temp_wait_time
+        print('waiting for fridge to cool down. Minimum wait time is {}s'.format(min_temp_wait_time))
         while not_settled:
             temperature = self.fridge.get_mc_temperature()
             if temperature <= wait_for_temp and \
@@ -201,6 +238,7 @@ class eHeExperiment():
         self.set_res_voltage(self.config.experiment.loading_Vres)
         self.set_trap_voltage(self.config.experiment.loading_Vtrap)
         self.set_guard_voltage(self.config.experiment.loading_Vguard)
+        self.set_pinch_voltage(self.config.experiment.loading_Vpinch)
         self.filament.fire_filament(**self.config.filament.firing)
         self.fridge_wait_for_cooldown()
 

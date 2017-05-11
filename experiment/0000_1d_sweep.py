@@ -10,8 +10,6 @@ ehe.filament = filament
 ehe.seekat = seekat
 
 ehe.nwa.configure(**vars(ehe.config.nwa.configuration or (lambda: None)))
-for key in ehe.config.nwa.set.keys():
-    nwa.__getattribute__('set_' + key)(ehe.config.nwa.set.__dict__[key])
 
 sweeps = ehe.config.experiment.sweeps
 ####### experiment sweep definitions and preview logic #######
@@ -25,8 +23,16 @@ for index, sweep in enumerate(sweeps):
 ehe.note('Starting Experiment...')
 ehe.note('temperature is {}K'.format(ehe.fridge.get_mc_temperature()))
 
+if ehe.config.nwa.set_before_loading:
+    for key in ehe.config.nwa.set_before_loading.keys():
+        nwa.__getattribute__('set_' + key)(ehe.config.nwa.set_before_loading.__dict__[key])
+
 if ehe.config.experiment.load_electrons:
     ehe.load_electrons()
+
+if ehe.config.nwa.set_before_experiment:
+    for key in ehe.config.nwa.set_before_experiment.keys():
+        nwa.__getattribute__('set_' + key)(ehe.config.nwa.set_before_experiment.__dict__[key])
 
 for index, sweep in enumerate(sweeps):
     sweep_type, = sweep.keys()
@@ -34,11 +40,14 @@ for index, sweep in enumerate(sweeps):
     sweep_gen = lambda: sweep_types.__dict__[sweep_type](**sweep_params)
     ####### experiment sweep definitions and preview logic #######
     print("now sweep...")
-    try:
-        if sweep_params.new_stack:
-            ehe.dataCache.new_stack()
-    except:
-        pass
+
+    if 'new_stack' in sweep_params and sweep_params['new_stack'] is True:
+        ehe.new_stack()
+
+    if 'set_nwa' in sweep_params and sweep_params['set_nwa']:
+        for key in sweep_params['set_nwa'].keys():
+            nwa.__getattribute__('set_' + key)(sweep_params['set_nwa'][key])
+
     ehe.sweep(sweep_gen())
 
 if hasattr(ehe.config.nwa, 'set_before_exit'):
