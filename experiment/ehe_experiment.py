@@ -239,7 +239,7 @@ class eHeExperiment():
         time.sleep(1.0)
         self.filament.fire_filament(**self.config.filament.firing)
 
-        print 'minimum wait time: {}s'.format(self.config.fridge.min_temp_wait_time)
+        print '\nminimum wait time: {}s'.format(self.config.fridge.min_temp_wait_time)
         time.sleep(self.config.fridge.min_temp_wait_time)
         self.fridge_wait_for_cooldown()
 
