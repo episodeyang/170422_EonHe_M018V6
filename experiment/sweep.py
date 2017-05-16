@@ -2,7 +2,9 @@ from ehe_experiment import eHeExperiment
 from setup_instruments import nwa, filament, seekat, fridge
 import sweep_types
 
-ehe = eHeExperiment(config_file_path="./0000_1d_sweep.yml")
+ehe = eHeExperiment(config_file_path="./jobs/trap_res_vs_power_sweep.yml")
+# ehe = eHeExperiment(config_file_path="./jobs/2d_sweep_res_trap_vs_pinch_guard.yml")
+# ehe = eHeExperiment(config_file_path="./jobs/default_experiment_configurations.yml")
 
 ehe.nwa = nwa
 ehe.fridge = fridge
@@ -16,8 +18,9 @@ sweeps = ehe.config.experiment.sweeps
 for index, sweep in enumerate(sweeps):
     sweep_type, = sweep.keys()
     sweep_params = sweep[sweep_type]
-    sweep_gen = lambda: sweep_types.__dict__[sweep_type](**sweep_params)
+    sweep_gen = lambda: sweep_types.__dict__[sweep_type](_preview=True, **sweep_params)
     ehe.save_sweep_preview(sweep_gen(), index, title=sweep_type, blocking=ehe.config.experiment.preview_sweeps)
+
 
 ######## Experiment #########
 ehe.note('Starting Experiment...')
@@ -47,6 +50,7 @@ for index, sweep in enumerate(sweeps):
     if 'set_nwa' in sweep_params and sweep_params['set_nwa']:
         for key in sweep_params['set_nwa'].keys():
             nwa.__getattribute__('set_' + key)(sweep_params['set_nwa'][key])
+            ehe.dataCache.set('nwa.' + key, sweep_params['set_nwa'][key])
 
     ehe.sweep(sweep_gen())
 

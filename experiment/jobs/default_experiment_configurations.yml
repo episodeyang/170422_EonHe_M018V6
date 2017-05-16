@@ -1,0 +1,155 @@
+prefix: simple_sweep_low_power
+dashboard: experimentation_{prefix}
+data_directory: ..\data\{date}\{time}_{prefix}
+colors: ["#24636c", "#23aaff", "#61a496", "#be977d", "#d85741"]
+instruments:
+  - nwa
+  - filament
+  - seekat
+  - fridge
+# all experiment parameters goes here.
+fridge:
+  wait_for_temp: 0.200
+  min_temp_wait_time: 15
+filament:
+  config:
+    amplitude: 4.2
+    offset: -0.5
+    frequency: 113e3
+    duration: 40e-3
+  firing:
+    pulses: 100
+    delay: 0.00
+experiment:
+  load_electrons: False
+  loading_Vres: 3.0
+  loading_Vtrap: 3.0
+  loading_Vguard: 0.00
+  loading_Vpinch: 0.00
+  preview_sweeps: False
+  sweeps:
+    - voltage_sweep:
+        new_stack: True
+        set_nwa:
+          start_frequency: 6.385E9 #center_frequency: 6.404e9
+          stop_frequency: 6.410E9 #span: 10e6
+          power: -60
+          averages: 5
+        Vguard: 0.00
+        Vpinch: 0.00
+        Vres_start: 3.0
+        Vres_end: 0.0
+        dVres: 0.01
+        offset: 0.0 # Vtrap - Vres
+        bi_dir: True
+#    - voltage_sweep:
+#        new_stack: True
+#        set_nwa:
+#          power: -40
+#          averages: 25
+#        Vguard: 0.00
+#        Vpinch: 0.00
+#        Vres_start: 3.0
+#        Vres_end: 0.0
+#        dVres: 0.025
+#        offset: 0.0 # Vtrap - Vres
+#        bi_dir: True
+#    - voltage_sweep:
+#        new_stack: True
+#        set_nwa:
+#          power: -30
+#          averages: 1
+#        Vguard: 0.00
+#        Vpinch: 0.00
+#        Vres_start: 3.0
+#        Vres_end: 0.0
+#        dVres: 0.025
+#        offset: 0.0 # Vtrap - Vres
+#        bi_dir: True
+#    - voltage_sweep:
+#        new_stack: True
+#        set_nwa:
+#          power: -20
+#          averages: 1
+#        Vguard: 0.00
+#        Vpinch: 0.00
+#        Vres_start: 3.0
+#        Vres_end: 0.0
+#        dVres: 0.025
+#        offset: 0.0 # Vtrap - Vres
+#        bi_dir: True
+#    - voltage_sweep:
+#        new_stack: True
+#        set_nwa:
+#          power: -10
+#          averages: 1
+#        Vguard: 0.00
+#        Vpinch: 0.00
+#        Vres_start: 3.0
+#        Vres_end: 0.0
+#        dVres: 0.025
+#        offset: 0.0 # Vtrap - Vres
+#        bi_dir: True
+#    - voltage_sweep:
+#        new_stack: True
+#        set_nwa:
+#          power: -5
+#          averages: 1
+#        Vguard: 0.00
+#        Vpinch: 0.00
+#        Vres_start: 3.0
+#        Vres_end: 0.0
+#        dVres: 0.025
+#        offset: 0.0 # Vtrap - Vres
+#        bi_dir: True
+ledger:
+  note_line_length: 79
+# this is optional
+data_cache:
+
+
+sample:
+  freq_no_electron: 6.4012e9
+  freq_with_e: 6.4012e9
+nwa:
+  model: E5071C
+  # list of configuration to pass into nwa configuration method
+  configuration: #set after adding the instrument.
+    center: 6.403e9
+    span: 10e6
+    # averages: 1
+    sweep_points: 401 #401
+  # the rest that gets set one after another. Order is not preserved.
+  set_before_sweep_preview:
+    # center_frequency: 5e9
+    format: SLOG
+    measure: S21
+    trigger_source: BUS
+    electrical_delay: 64E-9
+    power: -25
+    averages: 1
+    average_state: True
+    ifbw: 10E3
+  set_before_loading:
+    format: MLOG
+    trigger_source: INT
+  set_before_experiment:
+    format: SLOG
+    measure: S21
+    trigger_source: BUS
+  set_before_exit:
+    format: MLOG
+    trigger_source: INT
+
+seekat:
+  res_channel: 1
+  trap_channel: 2
+  guard_channel: 3
+  pinch_channel: 4
+#  res_guard_channel: 3
+#  trap_guard_channel: 4
+#  pinch_channel: 5
+monitoring:
+  spectrum_down_sample: 10
+  spectrum_time_domain_down_sample: 1
+  spectrum_window_length: 1000
