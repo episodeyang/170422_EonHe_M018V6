@@ -8,5 +8,7 @@ class PeakTracker():
     def fit(self, fpts, mags):
         try:
             self.f0, self.fw = fit_resonance(fpts, mags)
+            return self.f0, self.fw
         except:
             pass
+

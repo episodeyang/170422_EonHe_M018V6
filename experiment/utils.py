@@ -1,15 +1,21 @@
 from __future__ import print_function
 from termcolor import cprint as _cprint
 
+
 class Struct(object):
     def __init__(self, **d):
         # type: (object) -> object
-        """Features:
+        """
+        Features:
         0. Take in a list of keyword arguments in constructor, and assign them as attributes
         1. Correctly handles `dir` command, so shows correct auto-completion in editors.
         2. Correctly handles `vars` command, and returns a dictionary version of self.
 
         When recursive is set to False,
+
+        Inputs:
+            __recursive: bool
+            __default: default
         """
         # double underscore variables are mangled by python, so we use keyword argument dictionary instead.
         # Otherwise you will have to use __Struct_recursive = False instead.
@@ -19,6 +25,12 @@ class Struct(object):
         else:
             __recursive = True
         self.__is_recursive = __recursive
+
+        if '__default' in d:
+            self.__has_default = True
+            self.__default = d['__default']
+            del d['__default']
+
         # keep the input as a reference. Destructuring breaks this reference.
         self.__d = d
 
@@ -36,9 +48,19 @@ class Struct(object):
             # NOTE: python 2 patch, because __keys__ is only used in python3
             return self.__dict__.keys
         else:
-            value = self.__d[key]
+            try:
+                value = self.__d[key]
+            except KeyError:
+                try:
+                    value = getattr(self.__d, key)
+                except AttributeError:
+                    value = self.__default
+
             if type(value) == type({}) and self.__is_recursive:
-                return Struct(**value)
+                if self.__has_default:
+                    return Struct(__recursive=self.__is_recursive, __default=self.__default, **value)
+                else:
+                    return Struct(__recursive=self.__is_recursive, **value)
             else:
                 return value
 
@@ -47,6 +69,10 @@ class Struct(object):
             return super(Struct, self).__getattribute__("__d")
         elif key in ["_Struct__is_recursive", "__is_recursive"]:
             return super(Struct, self).__getattribute__("__is_recursive")
+        elif key in ["_Struct__has_default", "__has_default"]:
+            return super(Struct, self).__getattribute__("__has_default")
+        elif key in ["_Struct__default", "__default"]:
+            return super(Struct, self).__getattribute__("__default")
         else:
             return super(Struct, self).__getattr__(key)
 
@@ -55,6 +81,10 @@ class Struct(object):
             super(Struct, self).__setattr__("__d", value)
         elif key == "_Struct__is_recursive":
             super(Struct, self).__setattr__("__is_recursive", value)
+        elif key == "_Struct__has_default":
+            super(Struct, self).__setattr__("__has_default", value)
+        elif key == "_Struct__default":
+            super(Struct, self).__setattr__("__default", value)
         else:
             self.__d[key] = value
 
@@ -88,6 +118,10 @@ if __name__ == "__main__":
     assert test_args.haha == {'a': 1}
 
     _cprint('*Struct* tests have passed.', 'green')
+
+    test_args = Struct(__default=None, **test_dict)
+    assert test_args.some_thing_never_seen is None, \
+        'undefined properties should have default so that it does not raise error'
 
     # Some other usage patterns
     # test_args = Struct(**test_dict, **{'ha': 'ha', 'no': 'no'})

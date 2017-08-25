@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 
 from slab.instruments.nwa import E5071
-
+#from slab.instruments.Seekat import Seekat
+from data_cache import dataCacheProxy
 from ehe_experiment import eHeExperiment
 from time import sleep, time, strftime
-from setup_instruments import fridge, res, heman, nwa
+from setup_instruments import fridge, heman, nwa, seekat
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
+
+res = seekat#Seekat.Seekat(address="COM11")
 
 def calibrate_electrical_delay(init_delay):
     """
@@ -29,6 +32,7 @@ def calibrate_electrical_delay(init_delay):
 
     return abs((d2*slope1 - d1*slope2)/(slope1 - slope2))
 
+t0 = time()
 
 if __name__ == "__main__":
     today = strftime("%y%m%d")
@@ -36,26 +40,22 @@ if __name__ == "__main__":
     expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_helium_electrophoresis" % now)
     print "Saving data in %s" % expt_path
     if not os.path.isdir(expt_path):
-        os.mkdir(expt_path)
+        os.makedirs(expt_path)
 
     prefix = "helium_electrophoresis"
     fridgeParams = {'wait_for_temp': 0.080,
                     'min_temp_wait_time': 60}
 
-    ehe = eHeExperiment(expt_path, prefix, fridgeParams, newDataFile=True)
-    print ehe.filename
-
-    ehe.sample = lambda: None
-    ehe.sample.freqNoE = 6.16562e9
-    ehe.sample.freqWithE = 8023438335.47
+    #ehe = eHeExperiment(expt_path, prefix, fridgeParams, newDataFile=True)
+    dataCache = dataCacheProxy(file_path=os.path.join(expt_path, os.path.split(expt_path)[1] + ".h5"))
 
 
     def take_trace_and_save(sweep_points):
         temperature = fridge.get_mc_temperature()
-        ehe.dataCache.post('temperature', temperature)
+        dataCache.post('temperature', temperature)
 
         Vres = res.get_voltage(1)
-        ehe.dataCache.post('Vres', Vres)
+        dataCache.post('Vres', Vres)
 
         #Vguard = guard.get_volt()
         #ehe.dataCache.post('Vguard', Vguard)
@@ -64,33 +64,36 @@ if __name__ == "__main__":
         #ehe.dataCache.post('Vtrap', Vtrap)
 
         fpts, mags, phases = nwa.take_one()
-        ehe.dataCache.post('fpts', fpts)
-        ehe.dataCache.post('mags', mags)
-        ehe.dataCache.post('phases', phases)
-        ehe.dataCache.post('time', time() - ehe.t0)
+        dataCache.post('fpts', fpts)
+        dataCache.post('mags', mags)
+        dataCache.post('phases', phases)
+        dataCache.post('time', time() - t0)
 
         return temperature
 
     nwa.set_measure('S21')
 
-    averages = 10
+    averages = 1
     sweep_points = 1601
 
-    nwa.configure(center=nwa.get_center_frequency(),
-                  span=nwa.get_span(),
-                  sweep_points=sweep_points,
-                  power=nwa.get_power(),
-                  averages=averages,
-                  ifbw=nwa.get_ifbw())
+    nwa_config = {'center' : nwa.get_center_frequency(),
+                  'span' : nwa.get_span(),
+                  'sweep_points' : sweep_points,
+                  'power' : nwa.get_power(),
+                  'averages' : averages,
+                  'ifbw' : nwa.get_ifbw()}
+
+    nwa.configure(**nwa_config)
+    dataCache.set_dict('nwa_config', nwa_config)
 
     #correct_delay = calibrate_electrical_delay(68E-9)
     #print correct_delay
     nwa.set_trigger_source('BUS')
-    nwa.set_electrical_delay(64E-9)
+    nwa.set_electrical_delay(68E-9)
     nwa.set_format('SLOG')
     nwa.auto_scale()
 
-    dV = 0.100
+    dV = 0.005
 
     Vress = list(np.arange(0, +5, +dV)) \
             + list(np.arange(+5, 0, -dV))
@@ -123,7 +126,7 @@ if __name__ == "__main__":
     print "sleep for 5 seconds..."
     sleep(5)
 
-    ehe.dataCache.set('puff', 90)
+    #ehe.dataCache.set('puff', 90)
 
     for Vres in tqdm(Vress):
         res.set_voltage(1, Vres)

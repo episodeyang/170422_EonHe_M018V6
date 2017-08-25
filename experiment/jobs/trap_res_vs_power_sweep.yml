@@ -1,7 +1,7 @@
 main: sweep.py
 prefix: power_sweep
 dashboard: experimentation_{prefix}
-data_directory: ..\data\{date}\power_dependent_electron_coupling\{time}_{prefix}
+data_directory: ..\data\{date}\replicate_koolstra_experiment\{time}_{prefix}
 colors: ["#24636c", "#23aaff", "#61a496", "#be977d", "#d85741"]
 instruments:
   - nwa
@@ -10,8 +10,8 @@ instruments:
   - fridge
 # all experiment parameters goes here.
 fridge:
-  wait_for_temp: 0.200
-  min_temp_wait_time: 15
+  wait_for_temp: 0.080
+  min_temp_wait_time: 60
 filament:
   config:
     amplitude: 4.2
@@ -19,7 +19,7 @@ filament:
     frequency: 113e3
     duration: 40e-3
   firing:
-    pulses: 100
+    pulses: 200
     delay: 0.00
 experiment:
   load_electrons: True
@@ -145,11 +145,9 @@ nwa:
 seekat:
   res_channel: 1
   trap_channel: 2
-  guard_channel: 3
-  pinch_channel: 4
-#  res_guard_channel: 3
-#  trap_guard_channel: 4
-#  pinch_channel: 5
+  res_guard_channel: 3
+  trap_guard_channel: 4
+  pinch_channel: 5
 monitoring:
   spectrum_down_sample: 10
   spectrum_time_domain_down_sample: 1

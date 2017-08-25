@@ -1,0 +1,110 @@
+main: sweep.py
+prefix: loading_sweep
+note: "First run a sweep with guards set to positive. Repeat this experiment 4 time"
+dashboard: exp_{prefix}
+data_directory: ..\data\{date}\trap_loading_experiment\{time}_{prefix}
+colors: ["#24636c", "#23aaff", "#61a496", "#be977d", "#d85741"]
+instruments:
+  - nwa
+  - filament
+  - seekat
+  - fridge
+# all experiment parameters goes here.
+fridge:
+  wait_for_temp: 0.550
+  min_temp_wait_time: 60
+filament:
+  config:
+    amplitude: 4.2
+    offset: -0.5
+    frequency: 113e3
+    duration: 40e-3
+  firing:
+    pulses: 200
+    delay: 0.00
+experiment:
+  preview_sweeps: False
+  load_electrons: True
+  unload:
+    - sweep_all:
+        start: -1
+        end: -4
+        n: 4
+        delay: 0.5
+        bi_dir: True
+  loading_Vres: 2.0
+  loading_Vtrap: -3.0
+  loading_Vres_guard: 0.00
+  loading_Vtrap_guard: 0.00
+  loading_Vpinch: -2.00
+  loading_criteria:
+    f0: 6.40511e9
+    Q: 9000
+    df: 6.5e6
+    Vres: 0.6
+    Vtrap: -2.0
+    Vres_guard: 0.00
+    Vtrap_guard: 0.00
+    Vpinch: -2.00
+    delay_between_trials: 120
+  sweeps:
+    # sweep till 0.360
+    - trap_voltage_sweep:
+        note: Load the trap while having positive voltage on guard, sweep trap slowly.
+        new_stack: True
+        Vres: 0.6
+        Vres_guard: 0.10
+        Vtrap_guard: 0.10
+        Vpinch: -2.00
+        Vtrap_start: 0.0
+        Vtrap_end: 0.80 # 0.370 is where the avalanche happens
+#        Vtrap_end: 0.360 # 0.370 is where the avalanche happens
+        dVtrap: 0.00025
+        bi_dir: True
+ledger:
+  note_line_length: 79
+# this is optional
+data_cache:
+
+sample:
+  freq_no_electron: 6.4012e9
+  freq_with_e: 6.4012e9
+nwa:
+  model: E5071C
+  # list of configuration to pass into nwa configuration method
+  configuration: #set after adding the instrument.
+    start: 6.395e9
+    stop: 6.407e9
+    sweep_points: 501 #401
+  # the rest that gets set one after another. Order is not preserved.
+  set_before_sweep_preview:
+    # center_frequency: 5e9
+    format: SLOG
+    measure: S21
+    trigger_source: BUS
+    electrical_delay: 68e-9
+    power: -40
+    averages: 25
+    average_state: True
+#    ifbw: 10E3
+#  set_before_loading:
+#    format: MLOG
+#    trigger_source: INT
+  set_before_experiment:
+    format: SLOG
+    measure: S21
+    trigger_source: BUS
+  set_before_exit:
+    format: MLOG
+    trigger_source: INT
+
+seekat:
+  res_channel: 1
+  trap_channel: 2
+  res_guard_channel: 3
+  trap_guard_channel: 4
+  pinch_channel: 5
+monitoring:
+  spectrum_down_sample: 10
+  spectrum_time_domain_down_sample: 1
+  spectrum_window_length: 1000

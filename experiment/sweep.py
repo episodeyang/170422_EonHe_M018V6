@@ -2,9 +2,7 @@ from ehe_experiment import eHeExperiment
 from setup_instruments import nwa, filament, seekat, fridge
 import sweep_types
 
-ehe = eHeExperiment(config_file_path="./jobs/trap_res_vs_power_sweep.yml")
-# ehe = eHeExperiment(config_file_path="./jobs/2d_sweep_res_trap_vs_pinch_guard.yml")
-# ehe = eHeExperiment(config_file_path="./jobs/default_experiment_configurations.yml")
+ehe = eHeExperiment(config_file_path="./jobs/trap_suck.yml")
 
 ehe.nwa = nwa
 ehe.fridge = fridge
@@ -21,7 +19,6 @@ for index, sweep in enumerate(sweeps):
     sweep_gen = lambda: sweep_types.__dict__[sweep_type](_preview=True, **sweep_params)
     ehe.save_sweep_preview(sweep_gen(), index, title=sweep_type, blocking=ehe.config.experiment.preview_sweeps)
 
-
 ######## Experiment #########
 ehe.note('Starting Experiment...')
 ehe.note('temperature is {}K'.format(ehe.fridge.get_mc_temperature()))
@@ -31,7 +28,8 @@ if ehe.config.nwa.set_before_loading:
         nwa.__getattribute__('set_' + key)(ehe.config.nwa.set_before_loading.__dict__[key])
 
 if ehe.config.experiment.load_electrons:
-    ehe.load_electrons()
+    ehe.note('load and reload until criteria is fulfilled.')
+    ehe.load_electrons_till()
 
 if ehe.config.nwa.set_before_experiment:
     for key in ehe.config.nwa.set_before_experiment.keys():
@@ -46,6 +44,9 @@ for index, sweep in enumerate(sweeps):
 
     if 'new_stack' in sweep_params and sweep_params['new_stack'] is True:
         ehe.new_stack()
+
+    if 'note' in sweep_params:
+        ehe.note(sweep_params['note'])
 
     if 'set_nwa' in sweep_params and sweep_params['set_nwa']:
         for key in sweep_params['set_nwa'].keys():

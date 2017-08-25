@@ -6,6 +6,7 @@ from ehe_experiment import eHeExperiment
 from time import sleep, time, strftime
 from matplotlib import pyplot as plt
 import numpy as np
+from data_cache import dataCacheProxy
 
 from setup_instruments import heman, fridge, nwa
 #from experiment.instruments import heman, fridge, nwa
@@ -35,7 +36,7 @@ if __name__ == "__main__":
     expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_helium_curve"%now)
     print "Saving data in %s"%expt_path
     if not os.path.isdir(expt_path):
-        os.mkdir(expt_path)
+        os.makedirs(expt_path)
     
     prefix = "helium_curve"
     fridgeParams = {
@@ -43,22 +44,23 @@ if __name__ == "__main__":
         'min_temp_wait_time': 60  # 11 minutes
     }
 
-    ehe = eHeExperiment(expt_path, prefix, fridgeParams, newDataFile=False)
-    print ehe.filename
+    dataCache = dataCacheProxy(file_path=os.path.join(expt_path, os.path.split(expt_path)[1] + ".h5"))
+    #ehe = eHeExperiment(expt_path, prefix, fridgeParams, newDataFile=False)
+    #print ehe.filename
 
-    ehe.note('Start experiment')
+    #ehe.note('Start experiment')
 
-    ehe.sample = lambda: None
-    ehe.sample.freqNoE = 6.442e9
-    ehe.sample.freqWithE = 8023438335.47
+    #     ehe.sample = lambda: None
+    f0 = 6.441e9
+    # ehe.sample.freqWithE = 8023438335.47
 
     nwa.set_measure('S21')
 
     averages = 1
     sweep_points = 1601
 
-    nwa.configure(center=nwa.get_center_frequency(),
-                  span=nwa.get_span(),
+    nwa.configure(start=f0-40E6,
+                  stop=f0+5E6,
                   sweep_points=sweep_points,
                   power=nwa.get_power(),
                   averages=averages,
@@ -66,7 +68,7 @@ if __name__ == "__main__":
 
     #correct_delay = calibrate_electrical_delay(64E-9)
     #print correct_delay
-    nwa.set_electrical_delay(64E-9)
+    nwa.set_electrical_delay(68E-9)
     nwa.set_trigger_source('BUS')
     #nwa.set_electrical_delay(correct_delay)
     nwa.set_format('SLOG')
@@ -90,15 +92,15 @@ if __name__ == "__main__":
 
     fig.savefig(os.path.join(expt_path, "pre_puff_spectrum.png"), dpi=200)
 
-    ehe.note('Putting puffs into the sample box')
+    print 'Putting puffs into the sample box'
     heman.set_puffs(0)
     #heman.clean_manifold(3)
 
     while heman.get_puffs() < 100:  # Fill in the number to which you want to fill.
-        ehe.note("Puff %d" % (heman.get_puffs() + 1))
+        print "Puff %d" % (heman.get_puffs() + 1)
         heman.puff(pressure=0.25, min_time=20, timeout=600)
 
-        ehe.note("Wait for cooldown")
+        print "Wait for cooldown"
         settled = False
         start_time = time()
 
@@ -108,8 +110,8 @@ if __name__ == "__main__":
             settled = (temperature < 0.400) and ((time() - start_time) > 10.0)
             fpts, mags, phases = nwa.take_one()
 
-            ehe.dataCache.post('fpts', fpts)
-            ehe.dataCache.post('mags', mags)
-            ehe.dataCache.post('phases', phases)
-            ehe.dataCache.post('puffs', heman.get_puffs())
-            ehe.dataCache.post('temperature', temperature)
+            dataCache.post('fpts', fpts)
+            dataCache.post('mags', mags)
+            dataCache.post('phases', phases)
+            dataCache.post('puffs', heman.get_puffs())
+            dataCache.post('temperature', temperature)

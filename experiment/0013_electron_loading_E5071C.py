@@ -1,4 +1,5 @@
 from ehe_experiment import eHeExperiment
+from data_cache import dataCacheProxy
 from time import sleep, time, strftime
 from setup_instruments import fridge, seekat, heman, nwa, filament
 import numpy as np
@@ -9,8 +10,15 @@ from shutil import copyfile
 
 this_script = r"0013_electron_loading_E5071C.py"
 
-res = seekat
+#res = seekat
+t0 = time()
 
+def set_voltages(res, trap):
+    seekat.set_voltage(1, res)
+    seekat.set_voltage(2, trap)
+
+def get_voltages():
+    return seekat.get_voltage(1), seekat.get_voltage(2)
 def calibrate_electrical_delay(init_delay):
     """
     Calibrate the electrical delay for the phase plot such that the
@@ -33,16 +41,17 @@ def calibrate_electrical_delay(init_delay):
 if __name__ == "__main__":
     today = strftime("%y%m%d")
     now = strftime("%H%M%S")
-    expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_electron_loading" % now)
+    expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_electron_loading_500mK" % now)
     print "Saving data in %s" % expt_path
-    if not os.path.isdir(os.path.split(expt_path)[0]):
-        os.mkdir(os.path.split(expt_path)[0])
+
     if not os.path.isdir(expt_path):
-        os.mkdir(expt_path)
+        os.makedirs(expt_path)
     sleep(1)
 
     copyfile(os.path.join(r"S:\_Data\170422 - EonHe M018V6 with L3 etch\experiment", this_script),
              os.path.join(expt_path, this_script))
+
+    dataCache = dataCacheProxy(file_path=os.path.join(expt_path, os.path.split(expt_path)[1] + ".h5"))
 
     prefix = "electron_loading"
     fridgeParams = {'wait_for_temp': 0.080,
@@ -53,28 +62,30 @@ if __name__ == "__main__":
                       "frequency": 113e3,
                       "duration": 40e-3}
 
-    pulseParams = {"delay": .01,
-                   "pulses": 150}
+    pulseParams = {"delay": .00,
+                   "pulses": 200}
 
     # filament = FilamentDriver(address="192.168.14.144")
     filament.setup_driver(**filamentParams)
     filament.set_timeout(10000)
     print filament.get_id()
 
-    ehe = eHeExperiment(expt_path, prefix, fridgeParams, newDataFile=True)
-    print ehe.filename
+    # ehe = eHeExperiment(expt_path, prefix, fridgeParams, newDataFile=True)
+    # print ehe.filename
 
-    ehe.sample = lambda: None
-    ehe.sample.freqNoE = 6.16562e9
-    ehe.sample.freqWithE = 8023438335.47
+    # ehe.sample = lambda: None
+    # ehe.sample.freqNoE = 6.16562e9
+    # ehe.sample.freqWithE = 8023438335.47
 
 
-    def take_trace_and_save():
+    def take_trace_and_save(averages):
         temperature = fridge.get_mc_temperature()
-        ehe.dataCache.post('temperature', temperature)
+        dataCache.post('temperature', temperature)
 
-        Vres = res.get_voltage(1.0)
-        ehe.dataCache.post('Vres', Vres)
+        Vres, Vtrap = get_voltages() #res.get_voltage(1.0)
+        dataCache.post('Vres', Vres)
+        dataCache.post('Vtrap', Vtrap)
+        dataCache.post('Vpinch', seekat.get_voltage(3))
 
         #Vguard = guard.get_volt()
         #ehe.dataCache.post('Vguard', Vguard)
@@ -82,46 +93,94 @@ if __name__ == "__main__":
         #Vtrap = trap.get_volt()
         #ehe.dataCache.post('Vtrap', Vtrap)
 
-        fpts, mags, phases = nwa.take_one()
-        ehe.dataCache.post('fpts', fpts)
-        ehe.dataCache.post('mags', mags)
-        ehe.dataCache.post('phases', phases)
-        ehe.dataCache.post('time', time() - ehe.t0)
+        if averages > 1:
+            fpts, mags, phases = nwa.take_one_averaged_trace()
+        else:
+            fpts, mags, phases = nwa.take_one()
+
+        dataCache.post('fpts', fpts)
+        dataCache.post('mags', mags)
+        dataCache.post('phases', phases)
+        dataCache.post('time', time() - t0)
 
         return temperature
+
+    def check_loading(V1=3.0, V2=0.4, threshold=5):
+        fig = plt.figure()
+        #res.set_voltage(1, V1)
+        set_voltages(V1, V1)
+        fpts, mags, phases = nwa.take_one()
+        plt.plot(fpts, mags, label='%.2fV'%V1)
+        max_idx = np.argmax(mags)
+        initial_f0 = fpts[max_idx]
+        transmission_i = mags[max_idx]
+        #res.set_voltage(1, V2)
+        set_voltages(V2, V2)
+        sleep(1)
+        fpts, mags, phases = nwa.take_one()
+        plt.plot(fpts, mags, label='%.2fV'%V2)
+        final_f0 = fpts[np.argmax(mags)]
+        transmission_f = mags[max_idx]
+        #res.set_voltage(1, V1)
+        set_voltages(V1, V1)
+        sleep(1)
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("Transmission")
+        plt.legend(edgecolor='none', framealpha=1, loc=0, prop={"size":10})
+        fig.savefig(os.path.join(expt_path, "Check_Loading.png"), dpi=200)
+        plt.show()
+
+        if np.abs(transmission_f - transmission_i) > threshold: #np.abs(final_f0 - initial_f0) > threshold:
+            print "Electrons seem present"
+            return True
+        else:
+            print "Shift too low! Measured shift was roughly %.2f kHz"%((final_f0 - initial_f0)/1E3)
+            return False
 
     nwa.set_measure('S21')
 
     load_electrons = True
+    # if not check_loading():
+    #     load_electrons = True
+    # else:
+    #     load_electrons = False
+
+    power = -40
     averages = 1
     sweep_points = 1601
 
     nwa.set_trigger_source('BUS')
     nwa.set_format('SLOG')
 
-    nwa.configure(center=nwa.get_center_frequency(),
-                  span=nwa.get_span(),
-                  sweep_points=sweep_points,
-                  power=nwa.get_power(),
-                  averages=averages,
-                  ifbw=nwa.get_ifbw())
+    nwa_config = {'start': 6.385E9,
+                  'stop': 6.407E9,
+                  'sweep_points': sweep_points,
+                  'power': power,
+                  'averages': averages,
+                  'ifbw': nwa.get_ifbw()}
+
+    nwa.configure(**nwa_config)
+    dataCache.set_dict('nwa_config', nwa_config)
 
     #correct_delay = calibrate_electrical_delay(68E-9)
     #print correct_delay
     #nwa.set_electrical_delay(correct_delay)
     nwa.auto_scale()
 
-    dV = 0.020
+    dV = 0.02
 
-    Vress = list(np.arange(3.0, -3.0, -dV)) \
-            + list(np.arange(-3.0, 3.0, +dV))
+    Vress = list(np.arange(3.0, 0.0, -dV)) \
+            + list(np.arange(0.0, 3.0, +dV))
 
     fig = plt.figure(figsize=(8.,12.))
     plt.subplot(311)
     plt.plot(Vress, 'o', color="#23aaff", markeredgecolor="none")
     plt.ylabel("Resonator voltage (V)")
 
-    fpts, mags, phases = nwa.take_one()
+    if averages > 1:
+        fpts, mags, phases = nwa.take_one_averaged_trace()
+    else:
+        fpts, mags, phases = nwa.take_one()
 
     plt.subplot(312)
     plt.plot(fpts, mags)
@@ -145,13 +204,14 @@ if __name__ == "__main__":
     print "Loading electrons..."
     if load_electrons:
         #trap.set_volt(3.0)
-        res.set_voltage(1, 3.0)
+        #res.set_voltage(1, 3.0)
+        set_voltages(3.0, 3.0)
         sleep(2.0)
         filament.fire_filament(100, 0.01)
-        sleep(10.0)
+        sleep(30.0)
 
     not_settled = True
-    stable_temp = 0.170
+    stable_temp = 0.550
     print "Waiting for temperature to stabilize to %.0f mK..." % (stable_temp * 1E3)
     while not_settled:
         temperature = fridge.get_mc_temperature()
@@ -160,16 +220,24 @@ if __name__ == "__main__":
 
     nwa.set_trigger_source('BUS')
     nwa.set_format('SLOG')
+    nwa.set_average_state(True)
 
     # Set voltages for other electrodes:
-    res.set_voltage(2, 0.0) # DC bias pinch
-    res.set_voltage(3, 0.0) # Resonator guard
+    #res.set_voltage(2, 0.0) # DC bias pinch
+    #res.set_voltage(3, 0.0) # Resonator guard
 
-    print "Starting resV sweep..."
-    for Vres in tqdm(Vress):
-        res.set_voltage(1, Vres)
-        take_trace_and_save()
+    seekat.set_voltage(3, 0)
 
-    nwa.set_format('MLOG')
-    nwa.auto_scale()
-    nwa.set_trigger_source('INT')
+    if check_loading():
+        print "Starting resV sweep..."
+        for Vres in tqdm(Vress):
+            #print seekat.get_voltage(3)
+            #res.set_voltage(1, Vres)
+            set_voltages(Vres, Vres)
+            take_trace_and_save(averages)
+
+        nwa.set_format('MLOG')
+        nwa.auto_scale()
+        nwa.set_trigger_source('INT')
+    else:
+        print "Did not start sweep, electrons seemed not present."

@@ -3,17 +3,18 @@ from slab.instruments.PNAX import N5242A
 from slab.instruments.cryostat import Triton
 from slab.instruments.nwa import E5071
 from slab.instruments.Seekat import Seekat
+from slab.instruments.voltsource import YokogawaGS200
 # from TeensyTemp import TeensyTemp
 
-im = InstrumentManager()
+#im = InstrumentManager()
 
 # guard = YokogawaGS200(address="192.168.14.146")#im['SRS']
 # res = YokogawaGS200(address="192.168.14.146")
 # srs = im['SRS']
-# trap = YokogawaGS200(address="192.168.14.148")
-
+yoko1 = YokogawaGS200(address="192.168.14.148")
+# yoko2 = YokogawaGS200(address="192.168.14.145")
 heman = HeliumManifold(address="http://192.168.14.22")#im['heman']
-seekat = Seekat.Seekat(address="COM11")
+seekat = Seekat.Seekat(address="COM11")#, timeout=100000, baudrate=115200)
 fridge = Triton(address='192.168.14.129')
 filament = FilamentDriver(address="192.168.14.144", recv_length=2**10)
 # nwa = N5242A("N5242A", address="192.168.14.249")

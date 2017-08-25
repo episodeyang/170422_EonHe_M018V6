@@ -7,6 +7,15 @@ from slab.dsfit import lorfunc
 #W_to_dBm
 import numpy as np
 
+def fit_res_gerwin(fpts, mags, span=3E6):
+    "return f0, Q"
+    center_freq = fpts[np.argmax(mags)]
+    try:
+        fr = fitlor(fpts, dataanalysis.dBm_to_W(mags), domain=(center_freq - span / 2., center_freq + span / 2.))
+        return fr[2], fr[2]/(2*fr[3])
+    except:
+        print "Fit failed!"
+        return center_freq, 0.0
 
 def fit_resonance(fpts, mags):
     "return f0, fw <= width at half maximum."
