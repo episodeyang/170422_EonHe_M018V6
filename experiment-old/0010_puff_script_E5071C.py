@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import slab, os
-#import util as util
+# import util as util
 from ehe_experiment import eHeExperiment
 from time import sleep, time, strftime
 from matplotlib import pyplot as plt
 import numpy as np
 
 from setup_instruments import heman, fridge, nwa
-#from experiment.instruments import heman, fridge, nwa
+
+
+# from experiment.instruments import heman, fridge, nwa
 
 def calibrate_electrical_delay(init_delay):
     """
@@ -20,23 +22,24 @@ def calibrate_electrical_delay(init_delay):
     d1 = init_delay
     nwa.set_electrical_delay(d1)
     fpts, mags, phases = nwa.take_one()
-    slope1 = np.mean(phases[-10:])-np.mean(phases[:10])
+    slope1 = np.mean(phases[-10:]) - np.mean(phases[:10])
 
     d2 = d1 + 1E-9
     nwa.set_electrical_delay(d2)
     fpts, mags, phases = nwa.take_one()
-    slope2 = np.mean(phases[-10:])-np.mean(phases[:10])
+    slope2 = np.mean(phases[-10:]) - np.mean(phases[:10])
 
-    return abs((d2*slope1 - d1*slope2)/(slope1 - slope2))
+    return abs((d2 * slope1 - d1 * slope2) / (slope1 - slope2))
+
 
 if __name__ == "__main__":
     today = strftime("%y%m%d")
     now = strftime("%H%M%S")
-    expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_helium_curve"%now)
-    print "Saving data in %s"%expt_path
+    expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_helium_curve" % now)
+    print "Saving data in %s" % expt_path
     if not os.path.isdir(expt_path):
         os.mkdir(expt_path)
-    
+
     prefix = "helium_curve"
     fridgeParams = {
         'wait_for_temp': 0.080,
@@ -57,24 +60,27 @@ if __name__ == "__main__":
     averages = 1
     sweep_points = 1601
 
-    nwa.configure(center=nwa.get_center_frequency(),
-                  span=nwa.get_span(),
-                  sweep_points=sweep_points,
-                  power=nwa.get_power(),
-                  averages=averages,
-                  ifbw=nwa.get_ifbw())
+    nwa.configure(
+        start=6.4033e9,
+        stop=6.4063e9,
+        # center=nwa.get_center_frequency(),
+        # span=nwa.get_span(),
+        sweep_points=sweep_points,
+        power=-30, # nwa.get_power(),
+        averages=averages,
+        ifbw=nwa.get_ifbw())
 
-    #correct_delay = calibrate_electrical_delay(64E-9)
-    #print correct_delay
+    # correct_delay = calibrate_electrical_delay(64E-9)
+    # print correct_delay
     nwa.set_electrical_delay(64E-9)
     nwa.set_trigger_source('BUS')
-    #nwa.set_electrical_delay(correct_delay)
+    # nwa.set_electrical_delay(correct_delay)
     nwa.set_format('SLOG')
     nwa.auto_scale()
 
     heman.seal_manifold()
     fpts, mags, phases = nwa.take_one()
-    fig = plt.figure(figsize=(8.,10.))
+    fig = plt.figure(figsize=(8., 10.))
     plt.subplot(211)
     plt.plot(fpts, mags)
     plt.xlabel('Frequency (Hz)')
@@ -91,10 +97,10 @@ if __name__ == "__main__":
     fig.savefig(os.path.join(expt_path, "pre_puff_spectrum.png"), dpi=200)
 
     ehe.note('Putting puffs into the sample box')
-    heman.set_puffs(0)
-    #heman.clean_manifold(3)
+    heman.set_puffs(90)
+    # heman.clean_manifold(3)
 
-    while heman.get_puffs() < 100:  # Fill in the number to which you want to fill.
+    while heman.get_puffs() < 250:  # Fill in the number to which you want to fill.
         ehe.note("Puff %d" % (heman.get_puffs() + 1))
         heman.puff(pressure=0.25, min_time=20, timeout=600)
 

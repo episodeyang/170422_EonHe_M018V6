@@ -33,7 +33,7 @@ def calibrate_electrical_delay(init_delay):
 if __name__ == "__main__":
     today = strftime("%y%m%d")
     now = strftime("%H%M%S")
-    expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_electron_loading" % now)
+    expt_path = os.path.join(r'S:\_Data\170422 - EonHe M018V6 with L3 etch\data', today, "%s_electron_unloading_high_power" % now)
     print "Saving data in %s" % expt_path
     if not os.path.isdir(os.path.split(expt_path)[0]):
         os.mkdir(os.path.split(expt_path)[0])
@@ -92,29 +92,32 @@ if __name__ == "__main__":
 
     nwa.set_measure('S21')
 
-    load_electrons = True
-    averages = 1
-    sweep_points = 1601
+    load_electrons = False
+    averages = 3
+    sweep_points = 401
+    initial_power = -60
 
     nwa.set_trigger_source('BUS')
     nwa.set_format('SLOG')
+    nwa.set_query_sleep(3) # For if taking the trace takes too long and the NWA freaks out.
+    #nwa.set_timeout(100000)
 
-    nwa.configure(center=nwa.get_center_frequency(),
-                  span=nwa.get_span(),
+    nwa.configure(start=6.380E9, #center=nwa.get_center_frequency(),
+                  stop=6.410E9, #span=nwa.get_span(),
                   sweep_points=sweep_points,
-                  power=nwa.get_power(),
+                  power=initial_power,
                   averages=averages,
-                  ifbw=nwa.get_ifbw())
+                  ifbw=1E2)
 
     #correct_delay = calibrate_electrical_delay(68E-9)
     #print correct_delay
     #nwa.set_electrical_delay(correct_delay)
     nwa.auto_scale()
 
-    dV = 0.020
+    dV = 0.025
 
-    Vress = list(np.arange(3.0, -3.0, -dV)) \
-            + list(np.arange(-3.0, 3.0, +dV))
+    Vress = list(np.arange(3.0, 0.2, -dV)) \
+            + list(np.arange(0.2, 3.0, +dV))
 
     fig = plt.figure(figsize=(8.,12.))
     plt.subplot(311)
@@ -162,13 +165,32 @@ if __name__ == "__main__":
     nwa.set_format('SLOG')
 
     # Set voltages for other electrodes:
-    res.set_voltage(2, 0.0) # DC bias pinch
+    res.set_voltage(4, 0.0) # DC bias pinch
     res.set_voltage(3, 0.0) # Resonator guard
 
+    # unload_powers = [-10, -7.5, -5, -2.5, 0, 2.5]
+    # change_power = False
+    # for k, p in enumerate(unload_powers):
     print "Starting resV sweep..."
     for Vres in tqdm(Vress):
         res.set_voltage(1, Vres)
+        sleep(0.1)
+        res.set_voltage(2, Vres)
         take_trace_and_save()
+            # if Vres == 0.2:
+            #     print "changing power to unload power (%d dBm)"%p
+            #     nwa.set_center_frequency(6.405E9)
+            #     nwa.set_span(10E6)
+            #     nwa.set_power(p)
+            #     change_power = True
+            #     sleep(1.0)
+            #     take_trace_and_save()
+            # if change_power:
+            #     print "changing power to initial power..."
+            #     nwa.set_power(initial_power)
+            #     nwa.set_start_frequency(6.380E9)
+            #     nwa.set_stop_frequency(6.410E9)
+            #     change_power= False
 
     nwa.set_format('MLOG')
     nwa.auto_scale()
